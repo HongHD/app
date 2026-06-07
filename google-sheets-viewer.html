@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Sheets Viewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0f1e;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: rgba(99,179,237,0.12);
+      --accent: #38bdf8;
+      --accent2: #6ee7b7;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --danger: #f87171;
+      --success: #34d399;
+      --radius: 14px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.45);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background mesh ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 10%, rgba(56,189,248,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(110,231,183,0.06) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ── */
+    #app {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 48px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 24px rgba(56,189,248,0.35);
+    }
+    .brand h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .brand p { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+    #userArea {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid var(--accent);
+      object-fit: cover;
+    }
+    .user-name { font-size: 0.85rem; font-weight: 500; }
+    .user-email { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* ── Buttons ── */
+    .btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 10px 22px;
+      transition: all .2s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #0ea5e9);
+      color: #0a0f1e;
+      box-shadow: 0 4px 16px rgba(56,189,248,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(56,189,248,0.45); }
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: rgba(56,189,248,0.08); border-color: var(--accent); }
+    .btn-danger {
+      background: rgba(248,113,113,0.12);
+      color: var(--danger);
+      border: 1px solid rgba(248,113,113,0.25);
+    }
+    .btn-danger:hover { background: rgba(248,113,113,0.2); }
+    .btn-sm { padding: 7px 14px; font-size: 0.8rem; border-radius: 8px; }
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #10b981);
+      color: #0a0f1e;
+      box-shadow: 0 4px 12px rgba(52,211,153,0.25);
+    }
+    .btn-success:hover { transform: translateY(-2px); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+
+    /* ── Sections ── */
+    .section { display: none; }
+    .section.active { display: block; animation: fadeUp .35s ease; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Config card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .card-desc { font-size: 0.83rem; color: var(--text-muted); margin-bottom: 22px; line-height: 1.7; }
+
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+    .field input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border .2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--text-muted); }
+
+    .notice {
+      background: rgba(56,189,248,0.07);
+      border: 1px solid rgba(56,189,248,0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 0.82rem;
+      color: #93c5fd;
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+    .notice b { color: var(--accent); }
+
+    /* ── Login hero ── */
+    .login-hero {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    .login-hero h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(120deg, #e2e8f0 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .login-hero p { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 36px; }
+    .google-btn {
+      background: #fff;
+      color: #1f2937;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 32px;
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+      transition: all .2s;
+    }
+    .google-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 32px rgba(0,0,0,0.5); }
+    .google-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+
+    /* ── Spreadsheet list ── */
+    .list-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .list-header h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .badge {
+      background: rgba(56,189,248,0.15);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-left: 10px;
+    }
+
+    .search-bar {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .search-bar input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px 11px 40px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border .2s;
+    }
+    .search-bar input:focus { border-color: var(--accent); }
+    .search-bar::before {
+      content: '🔍';
+      position: absolute;
+      left: 13px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+    }
+
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+    }
+    .sheet-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .sheet-item:hover {
+      border-color: var(--accent);
+      background: rgba(56,189,248,0.05);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+    }
+    .sheet-item.selected {
+      border-color: var(--accent);
+      background: rgba(56,189,248,0.1);
+    }
+    .sheet-icon {
+      width: 40px; height: 40px; flex-shrink: 0;
+      background: linear-gradient(135deg, #1a7f3c, #34a853);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .sheet-info { flex: 1; min-width: 0; }
+    .sheet-name {
+      font-weight: 600; font-size: 0.9rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .sheet-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* ── Tab selector for sheets ── */
+    .tab-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .tab-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all .2s;
+      color: var(--text-muted);
+    }
+    .tab-chip.active, .tab-chip:hover {
+      background: rgba(56,189,248,0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── Data table ── */
+    .data-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .data-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .data-actions { display: flex; gap: 8px; }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      max-height: 520px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    thead th {
+      background: var(--surface2);
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 12px 16px;
+      white-space: nowrap;
+      position: sticky; top: 0; z-index: 2;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid rgba(99,179,237,0.06);
+      transition: background .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(56,189,248,0.04); }
+    tbody td {
+      padding: 10px 16px;
+      color: var(--text);
+      white-space: nowrap;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .row-num {
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      width: 40px;
+      text-align: center;
+    }
+
+    /* ── Stats ── */
+    .stats-row {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .stat-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 0.8rem;
+    }
+    .stat-chip span { color: var(--accent); font-weight: 600; }
+
+    /* ── Spinner ── */
+    .spinner-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 60px 20px; gap: 16px;
+      color: var(--text-muted); font-size: 0.88rem;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      background: #1e293b;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 22px;
+      font-size: 0.85rem;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+    #toast.ok  { border-color: var(--success); color: var(--success); }
+    #toast.err { border-color: var(--danger);  color: var(--danger); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .sheet-grid { grid-template-columns: 1fr; }
+      header { flex-direction: column; align-items: flex-start; gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ HEADER ══ -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">📊</div>
+      <div>
+        <h1>Sheets Viewer</h1>
+        <p>Google Spreadsheet Data Explorer</p>
+      </div>
+    </div>
+    <div id="userArea" style="display:none;">
+      <div>
+        <div class="user-name" id="userName"></div>
+        <div class="user-email" id="userEmail"></div>
+      </div>
+      <img id="userAvatar" class="avatar" src="" alt="" />
+      <button class="btn btn-danger btn-sm" onclick="signOut()">로그아웃</button>
+    </div>
+  </header>
+
+  <!-- ══ S0: CONFIG ══ -->
+  <section id="s0" class="section active">
+    <div class="card" style="max-width:620px; margin:0 auto;">
+      <div class="card-title">⚙️ API 설정</div>
+      <div class="card-desc">
+        Google Cloud Console에서 발급받은 OAuth 2.0 클라이언트 ID를 입력하세요.<br>
+        설정은 브라우저에 자동 저장됩니다.
+      </div>
+
+      <div class="notice">
+        <b>📋 설정 순서:</b><br>
+        1. <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent)">Google Cloud Console</a> → 새 프로젝트 생성<br>
+        2. API 및 서비스 → <b>Google Drive API</b> & <b>Google Sheets API</b> 활성화<br>
+        3. 사용자 인증 정보 → OAuth 2.0 클라이언트 ID 생성<br>
+        4. 애플리케이션 유형: <b>웹 애플리케이션</b> 선택<br>
+        5. 승인된 JavaScript 원본에 이 파일의 URL (예: <code style="color:var(--accent2)">http://localhost</code> 또는 <code style="color:var(--accent2)">file://</code>) 추가<br>
+        6. 클라이언트 ID 복사 후 아래에 입력
+      </div>
+
+      <div class="field">
+        <label>OAuth 2.0 클라이언트 ID</label>
+        <input type="text" id="clientIdInput"
+               placeholder="123456789-xxxxxxxxxxxx.apps.googleusercontent.com"
+               value="" />
+      </div>
+
+      <button class="btn btn-primary" onclick="saveConfig()" style="width:100%; justify-content:center; padding:14px;">
+        저장 후 계속 →
+      </button>
+    </div>
+  </section>
+
+  <!-- ══ S1: LOGIN ══ -->
+  <section id="s1" class="section">
+    <div class="login-hero">
+      <h2>Google 시트에 연결하세요</h2>
+      <p>구글 계정으로 로그인하면 모든 스프레드시트에 접근할 수 있습니다</p>
+      <button class="google-btn" onclick="signIn()">
+        <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.1l-6.2-5.2C29.4 35.6 26.8 36.5 24 36.5c-5.2 0-9.6-3.1-11.5-7.5l-6.6 5.1C9.6 39.8 16.3 44 24 44z"/><path fill="#1565C0" d="M43.6 20H24v8h11.3c-.9 2.5-2.6 4.6-4.8 6l6.2 5.2C40.5 36.2 44 30.6 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
+        Google 계정으로 로그인
+      </button>
+      <div style="margin-top:24px;">
+        <button class="btn btn-secondary btn-sm" onclick="showSection('s0')">← API 설정 변경</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ S2: SPREADSHEET LIST ══ -->
+  <section id="s2" class="section">
+    <div class="list-header">
+      <div>
+        <h2 style="font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:700;">
+          내 스프레드시트
+          <span class="badge" id="sheetCount">0</span>
+        </h2>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">시트를 선택하면 탭과 데이터를 불러옵니다</p>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadSpreadsheetList()">🔄 새로고침</button>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="시트 이름 검색..." oninput="filterSheets()" />
+    </div>
+    <div id="sheetGrid" class="sheet-grid"></div>
+  </section>
+
+  <!-- ══ S3: DATA VIEW ══ -->
+  <section id="s3" class="section">
+    <div class="data-header">
+      <div>
+        <button class="btn btn-secondary btn-sm" onclick="showSection('s2')" style="margin-bottom:10px;">← 목록으로</button>
+        <div class="data-title" id="spreadsheetTitle">스프레드시트</div>
+      </div>
+      <div class="data-actions">
+        <button class="btn btn-success btn-sm" onclick="exportCSV()">⬇ CSV 저장</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyToClipboard()">📋 복사</button>
+      </div>
+    </div>
+
+    <div id="tabList" class="tab-list"></div>
+
+    <div id="statsRow" class="stats-row"></div>
+
+    <div id="tableArea">
+      <div class="spinner-wrap"><div class="spinner"></div><span>데이터 불러오는 중...</span></div>
+    </div>
+  </section>
+
+</div><!-- /#app -->
+
+<div id="toast"></div>
+
+<!-- Google API -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+<script>
+/* ─────────────────────────────────────────────
+   State
+───────────────────────────────────────────── */
+let CLIENT_ID = '';
+const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets.readonly';
+let tokenClient = null;
+let accessToken  = null;
+let allSheets    = [];
+let currentSpreadsheetId   = null;
+let currentSpreadsheetData = [];
+let currentTabName         = '';
+
+/* ─────────────────────────────────────────────
+   Init
+───────────────────────────────────────────── */
+window.onload = () => {
+  CLIENT_ID = localStorage.getItem('gs_client_id') || '';
+  if (CLIENT_ID) {
+    document.getElementById('clientIdInput').value = CLIENT_ID;
+    initGoogleAuth();
+    showSection('s1');
+  }
+};
+
+function saveConfig() {
+  const val = document.getElementById('clientIdInput').value.trim();
+  if (!val || !val.includes('.apps.googleusercontent.com')) {
+    toast('올바른 클라이언트 ID를 입력해주세요.', 'err'); return;
+  }
+  CLIENT_ID = val;
+  localStorage.setItem('gs_client_id', val);
+  initGoogleAuth();
+  showSection('s1');
+  toast('설정이 저장되었습니다.', 'ok');
+}
+
+function initGoogleAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: handleTokenResponse
+  });
+}
+
+/* ─────────────────────────────────────────────
+   Auth
+───────────────────────────────────────────── */
+function signIn() {
+  if (!tokenClient) { toast('API 설정을 먼저 완료해주세요.', 'err'); return; }
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+async function handleTokenResponse(resp) {
+  if (resp.error) { toast('로그인 실패: ' + resp.error, 'err'); return; }
+  accessToken = resp.access_token;
+  await loadUserInfo();
+  await loadSpreadsheetList();
+  showSection('s2');
+}
+
+async function loadUserInfo() {
+  const r = await gFetch('https://www.googleapis.com/oauth2/v3/userinfo');
+  if (!r) return;
+  document.getElementById('userName').textContent = r.name || '';
+  document.getElementById('userEmail').textContent = r.email || '';
+  document.getElementById('userAvatar').src = r.picture || '';
+  document.getElementById('userArea').style.display = 'flex';
+}
+
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null;
+  allSheets   = [];
+  document.getElementById('userArea').style.display = 'none';
+  showSection('s1');
+  toast('로그아웃 되었습니다.');
+}
+
+/* ─────────────────────────────────────────────
+   Spreadsheet list
+───────────────────────────────────────────── */
+async function loadSpreadsheetList() {
+  const grid = document.getElementById('sheetGrid');
+  grid.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div><span>스프레드시트 목록 로딩 중...</span></div>';
+
+  let items = [];
+  let pageToken = '';
+  do {
+    const url = `https://www.googleapis.com/drive/v3/files?q=mimeType%3D%27application%2Fvnd.google-apps.spreadsheet%27&fields=nextPageToken%2Cfiles(id%2Cname%2CmodifiedTime%2CwebViewLink)&pageSize=100&orderBy=modifiedTime+desc${pageToken ? '&pageToken='+pageToken : ''}`;
+    const r = await gFetch(url);
+    if (!r) break;
+    items = items.concat(r.files || []);
+    pageToken = r.nextPageToken || '';
+  } while (pageToken);
+
+  allSheets = items;
+  document.getElementById('sheetCount').textContent = allSheets.length;
+  renderSheets(allSheets);
+}
+
+function renderSheets(list) {
+  const grid = document.getElementById('sheetGrid');
+  if (!list.length) {
+    grid.innerHTML = '<p style="color:var(--text-muted);font-size:.88rem;">스프레드시트가 없습니다.</p>';
+    return;
+  }
+  grid.innerHTML = list.map(f => `
+    <div class="sheet-item" onclick="openSpreadsheet('${f.id}','${escHtml(f.name)}')">
+      <div class="sheet-icon">📗</div>
+      <div class="sheet-info">
+        <div class="sheet-name">${escHtml(f.name)}</div>
+        <div class="sheet-meta">수정: ${fmtDate(f.modifiedTime)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function filterSheets() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  renderSheets(allSheets.filter(s => s.name.toLowerCase().includes(q)));
+}
+
+/* ─────────────────────────────────────────────
+   Open spreadsheet → load tabs
+───────────────────────────────────────────── */
+async function openSpreadsheet(id, name) {
+  currentSpreadsheetId = id;
+  document.getElementById('spreadsheetTitle').textContent = name;
+  document.getElementById('tabList').innerHTML = '';
+  document.getElementById('statsRow').innerHTML = '';
+  document.getElementById('tableArea').innerHTML =
+    '<div class="spinner-wrap"><div class="spinner"></div><span>시트 탭 불러오는 중...</span></div>';
+  showSection('s3');
+
+  const meta = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`);
+  if (!meta) return;
+
+  const tabs = (meta.sheets || []).map(s => s.properties.title);
+  renderTabs(tabs);
+  if (tabs.length) loadSheetData(id, tabs[0]);
+}
+
+function renderTabs(tabs) {
+  document.getElementById('tabList').innerHTML = tabs.map((t, i) => `
+    <div class="tab-chip${i===0?' active':''}" id="tab_${i}" onclick="selectTab('${escHtml(t)}',${i})">${escHtml(t)}</div>`).join('');
+}
+
+function selectTab(name, idx) {
+  document.querySelectorAll('.tab-chip').forEach((c,i) => c.classList.toggle('active', i===idx));
+  loadSheetData(currentSpreadsheetId, name);
+}
+
+/* ─────────────────────────────────────────────
+   Load sheet data
+───────────────────────────────────────────── */
+async function loadSheetData(id, sheetName) {
+  currentTabName = sheetName;
+  document.getElementById('statsRow').innerHTML = '';
+  document.getElementById('tableArea').innerHTML =
+    '<div class="spinner-wrap"><div class="spinner"></div><span>데이터 불러오는 중...</span></div>';
+
+  const enc = encodeURIComponent(sheetName);
+  const r = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${enc}`);
+  if (!r) return;
+
+  const rows = r.values || [];
+  currentSpreadsheetData = rows;
+  renderTable(rows, sheetName);
+}
+
+function renderTable(rows, sheetName) {
+  const area = document.getElementById('tableArea');
+  const stats = document.getElementById('statsRow');
+
+  if (!rows.length) {
+    area.innerHTML = '<p style="padding:32px;color:var(--text-muted);text-align:center;">데이터가 없습니다.</p>';
+    stats.innerHTML = '';
+    return;
+  }
+
+  const header = rows[0];
+  const body   = rows.slice(1);
+  const colCount = Math.max(...rows.map(r => r.length));
+
+  stats.innerHTML = `
+    <div class="stat-chip">총 행: <span>${body.length.toLocaleString()}</span></div>
+    <div class="stat-chip">열 수: <span>${header.length}</span></div>
+    <div class="stat-chip">시트: <span>${escHtml(sheetName)}</span></div>`;
+
+  const thead = `<thead><tr>
+    <th class="row-num">#</th>
+    ${header.map(h => `<th>${escHtml(h)}</th>`).join('')}
+  </tr></thead>`;
+
+  const tbody = '<tbody>' + body.map((row, ri) => {
+    const cells = Array.from({length: colCount - 0}, (_, ci) =>
+      `<td title="${escHtml(row[ci]||'')}">${escHtml(row[ci]||'')}</td>`
+    ).join('');
+    return `<tr><td class="row-num">${ri+1}</td>${cells}</tr>`;
+  }).join('') + '</tbody>';
+
+  area.innerHTML = `<div class="table-wrap"><table>${thead}${tbody}</table></div>`;
+}
+
+/* ─────────────────────────────────────────────
+   Export / Copy
+───────────────────────────────────────────── */
+function exportCSV() {
+  if (!currentSpreadsheetData.length) { toast('데이터가 없습니다.', 'err'); return; }
+  const csv = currentSpreadsheetData.map(row =>
+    row.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(',')
+  ).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentTabName||'sheet'}.csv`;
+  a.click();
+  toast('CSV로 저장되었습니다.', 'ok');
+}
+
+function copyToClipboard() {
+  if (!currentSpreadsheetData.length) { toast('데이터가 없습니다.', 'err'); return; }
+  const tsv = currentSpreadsheetData.map(r => r.join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => toast('클립보드에 복사되었습니다.', 'ok'));
+}
+
+/* ─────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────── */
+async function gFetch(url) {
+  try {
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({}));
+      toast((e.error?.message || '오류가 발생했습니다.'), 'err');
+      return null;
+    }
+    return r.json();
+  } catch(e) {
+    toast('네트워크 오류: ' + e.message, 'err');
+    return null;
+  }
+}
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => {
+    s.classList.toggle('active', s.id === id);
+  });
+}
+
+function escHtml(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit'});
+}
+
+let toastTimer;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3200);
+}
+</script>
+</body>
+</html>
