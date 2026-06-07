@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel Merger Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222535;
+    --surface3: #2a2e42;
+    --border: #2e3248;
+    --border2: #3a3f5c;
+    --text: #e8eaf6;
+    --text2: #9ca3c8;
+    --text3: #5c6282;
+    --accent: #6c8dfa;
+    --accent2: #4a6cf7;
+    --accent-glow: rgba(108, 141, 250, 0.15);
+    --green: #4ade80;
+    --green-dim: rgba(74, 222, 128, 0.1);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251, 191, 36, 0.1);
+    --red: #f87171;
+    --red-dim: rgba(248, 113, 113, 0.1);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Pretendard', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .logo-icon {
+    width: 30px;
+    height: 30px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .logo span { color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .step-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text3);
+    transition: background 0.3s;
+  }
+  .step-dot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .step-dot.done { background: var(--green); }
+
+  /* ── LAYOUT ── */
+  .container { display: flex; height: calc(100vh - 60px); }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    width: 380px;
+    min-width: 320px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+  }
+  .panel-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+  }
+  .badge {
+    background: var(--accent-glow);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 10px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── FILE DROP ZONE ── */
+  .drop-zone {
+    margin: 16px;
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.over {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon { font-size: 32px; margin-bottom: 10px; }
+  .drop-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .drop-sub { font-size: 12px; color: var(--text3); }
+
+  /* ── FILE LIST ── */
+  .file-list { flex: 1; overflow-y: auto; padding: 0 12px 12px; }
+  .file-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .file-card:hover { border-color: var(--border2); }
+  .file-card-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .file-num {
+    width: 22px;
+    height: 22px;
+    background: var(--accent2);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .file-info { flex: 1; min-width: 0; }
+  .file-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-meta { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .file-toggle {
+    color: var(--text3);
+    font-size: 12px;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .file-toggle.open { transform: rotate(180deg); }
+  .file-sheets { padding: 0 14px 12px; display: none; }
+  .file-sheets.open { display: block; }
+  .sheet-item {
+    background: var(--surface3);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .sheet-name {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sheet-icon { font-size: 10px; }
+  .col-list { padding: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .col-chip {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    cursor: grab;
+    transition: all 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .col-chip:hover {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+  .col-chip.dragging {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+  .col-chip.added {
+    border-color: var(--green);
+    color: var(--green);
+    background: var(--green-dim);
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* ── TARGET AREA ── */
+  .target-area {
+    padding: 20px 24px 0;
+    flex-shrink: 0;
+  }
+  .target-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .target-title {
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .target-hint {
+    font-size: 12px;
+    color: var(--text3);
+    font-style: italic;
+  }
+  .drop-target {
+    background: var(--surface);
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    min-height: 90px;
+    padding: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-items: flex-start;
+    align-content: flex-start;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .drop-target.dragover {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .drop-target-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .drop-target-empty-text {
+    color: var(--text3);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .target-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 5px 10px 5px 12px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: grab;
+    transition: all 0.15s;
+    user-select: none;
+    animation: chipIn 0.2s ease;
+  }
+  @keyframes chipIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .target-chip:hover { border-color: var(--accent); }
+  .target-chip.dragging-target { opacity: 0.3; }
+  .target-chip-src {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+  .target-chip-name { font-weight: 600; }
+  .target-chip-del {
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    border-radius: 3px;
+    transition: all 0.15s;
+  }
+  .target-chip-del:hover { color: var(--red); background: var(--red-dim); }
+  .action-bar {
+    padding: 12px 24px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .btn {
+    height: 36px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(108, 141, 250, 0.3);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(108, 141, 250, 0.45); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+  .btn-danger {
+    background: var(--red-dim);
+    border: 1px solid var(--red);
+    color: var(--red);
+  }
+  .btn-danger:hover { background: rgba(248,113,113,0.2); }
+  .col-count-info {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── PREVIEW TABLE ── */
+  .preview-section {
+    flex: 1;
+    padding: 0 24px 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0 10px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .preview-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .preview-badge {
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .preview-controls { display: flex; gap: 8px; align-items: center; }
+  .preview-rows-label { font-size: 12px; color: var(--text3); }
+  .preview-rows-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: 'Pretendard', sans-serif;
+    cursor: pointer;
+  }
+  .table-wrap {
+    flex: 1;
+    overflow: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+  table {
+    border-collapse: collapse;
+    min-width: 100%;
+    font-size: 12px;
+  }
+  thead { position: sticky; top: 0; z-index: 5; }
+  th {
+    background: var(--surface2);
+    border-bottom: 2px solid var(--border2);
+    border-right: 1px solid var(--border);
+    padding: 9px 14px;
+    text-align: left;
+    font-weight: 700;
+    white-space: nowrap;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: 0.3px;
+  }
+  th:last-child { border-right: none; }
+  .th-src {
+    display: block;
+    font-size: 9px;
+    color: var(--text3);
+    font-weight: 400;
+    margin-top: 2px;
+    font-family: 'Pretendard', sans-serif;
+  }
+  td {
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid rgba(255,255,255,0.03);
+    padding: 7px 14px;
+    white-space: nowrap;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+  }
+  td:last-child { border-right: none; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.025); }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+  tr:nth-child(even):hover td { background: rgba(255,255,255,0.025); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text3);
+    gap: 12px;
+    padding: 40px;
+  }
+  .empty-icon { font-size: 48px; opacity: 0.4; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--text2); }
+  .empty-sub { font-size: 13px; text-align: center; line-height: 1.6; max-width: 300px; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast-item {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    font-size: 13px;
+    box-shadow: var(--shadow);
+    animation: toastIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 240px;
+  }
+  .toast-item.success { border-color: var(--green); }
+  .toast-item.error { border-color: var(--red); }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes toastOut {
+    to { opacity: 0; transform: translateY(-6px); }
+  }
+
+  /* ── PROGRESS ── */
+  .progress-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .progress-overlay.show { display: flex; }
+  .progress-box {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 36px 48px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    min-width: 300px;
+  }
+  .progress-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 18px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress-text { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .progress-sub { font-size: 12px; color: var(--text3); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* Drag ghost */
+  .drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(108,141,250,0.4);
+    opacity: 0;
+    transition: opacity 0.1s;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    Excel <span>Merger</span> Pro
+  </div>
+  <div class="header-right">
+    <div class="step-pill">
+      <div class="step-dot" id="dot1"></div>
+      <div class="step-dot" id="dot2"></div>
+      <div class="step-dot" id="dot3"></div>
+      <span id="stepLabel" style="margin-left:4px;font-size:11px;">파일 선택</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- LEFT -->
+  <div class="left-panel">
+    <div class="panel-header">
+      <span class="panel-title">소스 파일</span>
+      <span class="badge" id="fileCountBadge">0개</span>
+    </div>
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv">
+      <div class="drop-icon">📂</div>
+      <div class="drop-title">엑셀 파일 선택 또는 드래그</div>
+      <div class="drop-sub">.xlsx / .xls / .csv 지원 · 여러 파일 동시 선택 가능</div>
+    </div>
+    <div class="file-list" id="fileList">
+      <div class="empty-state" id="leftEmpty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">파일을 선택하세요</div>
+        <div class="empty-sub">엑셀 파일을 선택하면 시트와 컬럼 목록이 여기에 표시됩니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <!-- DROP TARGET -->
+    <div class="target-area">
+      <div class="target-header">
+        <div class="target-title">
+          📌 결과 파일 컬럼 구성
+          <span class="target-hint">컬럼을 드래그하여 여기에 놓으세요</span>
+        </div>
+      </div>
+      <div class="drop-target" id="dropTarget">
+        <div class="drop-target-empty" id="dropEmpty">
+          <div class="drop-target-empty-text">
+            <span style="font-size:20px">⬇</span>
+            좌측 컬럼을 이곳으로 드래그하여 추가하세요
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTION BAR -->
+    <div class="action-bar">
+      <button class="btn btn-primary" id="btnGenerate" disabled onclick="generateExcel()">
+        <span>⬇</span> 엑셀 다운로드
+      </button>
+      <button class="btn btn-ghost" onclick="addAllColumns()">
+        <span>➕</span> 전체 추가
+      </button>
+      <button class="btn btn-ghost" onclick="sortColumnsAlpha()">
+        <span>🔤</span> 이름순 정렬
+      </button>
+      <button class="btn btn-danger" onclick="clearTarget()">
+        <span>🗑</span> 초기화
+      </button>
+      <span class="col-count-info" id="colCountInfo">선택된 컬럼: 0개</span>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="preview-section" id="previewSection">
+      <div class="preview-header">
+        <div class="preview-title">
+          📊 미리보기
+          <span class="preview-badge">LIVE</span>
+        </div>
+        <div class="preview-controls">
+          <span class="preview-rows-label">미리보기 행수</span>
+          <select class="preview-rows-select" id="previewRows" onchange="renderPreview()">
+            <option value="5">5행</option>
+            <option value="10" selected>10행</option>
+            <option value="20">20행</option>
+            <option value="50">50행</option>
+          </select>
+        </div>
+      </div>
+      <div id="previewContent" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="empty-state" id="previewEmpty">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">미리보기가 없습니다</div>
+          <div class="empty-sub">컬럼을 추가하면 결과 데이터 미리보기가 표시됩니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-overlay" id="progressOverlay">
+  <div class="progress-box">
+    <div class="progress-spinner"></div>
+    <div class="progress-text" id="progressText">처리 중...</div>
+    <div class="progress-sub" id="progressSub">잠시만 기다려 주세요</div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- DRAG GHOST -->
+<div class="drag-ghost" id="dragGhost"></div>
+
+<script>
+// ───────────────────────────────────
+// STATE
+// ───────────────────────────────────
+const state = {
+  files: [],        // { name, size, workbook, sheets: [{name, headers, rows}] }
+  target: [],       // { fileIdx, sheetIdx, colIdx, colName, label }
+  dragItem: null,   // dragging from source
+  dragTargetIdx: null, // dragging within target for reorder
+};
+
+let dragGhostEl = document.getElementById('dragGhost');
+let mouseX = 0, mouseY = 0;
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY;
+  if (dragGhostEl.style.opacity === '1') {
+    dragGhostEl.style.left = (mouseX + 14) + 'px';
+    dragGhostEl.style.top = (mouseY - 10) + 'px';
+  }
+});
+
+// ───────────────────────────────────
+// FILE HANDLING
+// ───────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  handleFiles(Array.from(e.dataTransfer.files));
+});
+fileInput.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
+
+async function handleFiles(files) {
+  const excelFiles = files.filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
+  if (!excelFiles.length) { toast('엑셀 파일(.xlsx/.xls/.csv)을 선택하세요', 'error'); return; }
+  showProgress('파일 읽는 중...', '');
+  for (const file of excelFiles) {
+    if (state.files.find(f => f.name === file.name)) { toast(`"${file.name}" 은 이미 추가된 파일입니다.`, 'error'); continue; }
+    try {
+      const entry = await readFile(file);
+      state.files.push(entry);
+    } catch(e) { toast(`"${file.name}" 읽기 실패: ${e.message}`, 'error'); }
+  }
+  hideProgress();
+  renderFileList();
+  updateStepDots();
+  toast(`${excelFiles.length}개 파일을 불러왔습니다 ✓`, 'success');
+}
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const isCSV = /\.csv$/i.test(file.name);
+        const wb = isCSV
+          ? XLSX.read(e.target.result, { type: 'string', raw: false })
+          : XLSX.read(e.target.result, { type: 'array', cellDates: true, raw: false });
+        const sheets = wb.SheetNames.map(sheetName => {
+          const ws = wb.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+          const headers = (json[0] || []).map((h, i) => h !== '' ? String(h) : `Column${i+1}`);
+          const rows = json.slice(1).filter(r => r.some(c => c !== ''));
+          return { name: sheetName, headers, rows };
+        }).filter(s => s.headers.length > 0);
+        resolve({ name: file.name, size: file.size, sheets });
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('파일 읽기 오류'));
+    if (/\.csv$/i.test(file.name)) reader.readAsText(file, 'utf-8');
+    else reader.readAsArrayBuffer(file);
+  });
+}
+
+// ───────────────────────────────────
+// RENDER FILE LIST
+// ───────────────────────────────────
+function renderFileList() {
+  const container = document.getElementById('fileList');
+  document.getElementById('leftEmpty').style.display = state.files.length ? 'none' : 'flex';
+  document.getElementById('fileCountBadge').textContent = `${state.files.length}개`;
+
+  // Remove old file cards
+  container.querySelectorAll('.file-card').forEach(el => el.remove());
+
+  state.files.forEach((file, fi) => {
+    const card = document.createElement('div');
+    card.className = 'file-card';
+    card.innerHTML = `
+      <div class="file-card-header" onclick="toggleCard(${fi})">
+        <div class="file-num">${fi + 1}</div>
+        <div class="file-info">
+          <div class="file-name" title="${file.name}">${file.name}</div>
+          <div class="file-meta">${file.sheets.length}개 시트 · ${formatSize(file.size)}</div>
+        </div>
+        <div class="file-toggle" id="toggle-${fi}">▼</div>
+      </div>
+      <div class="file-sheets" id="sheets-${fi}">
+        ${file.sheets.map((sheet, si) => `
+          <div class="sheet-item">
+            <div class="sheet-name"><span class="sheet-icon">▶</span>${sheet.name} <span style="color:var(--text3);font-weight:400;margin-left:4px">(${sheet.rows.length}행)</span></div>
+            <div class="col-list">
+              ${sheet.headers.map((h, ci) => {
+                const key = `${fi}-${si}-${ci}`;
+                const added = state.target.some(t => t.fileIdx===fi && t.sheetIdx===si && t.colIdx===ci);
+                return `<div class="col-chip ${added?'added':''}" id="chip-${key}"
+                  draggable="true"
+                  ondragstart="onChipDragStart(event,${fi},${si},${ci},'${escHtml(h)}')"
+                  ondragend="onChipDragEnd(event)"
+                  ondblclick="addColumnToTarget(${fi},${si},${ci},'${escHtml(h)}')"
+                  title="더블클릭으로 추가 / 드래그&amp;드롭"
+                >${escHtml(h)}</div>`;
+              }).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function toggleCard(fi) {
+  const sheets = document.getElementById(`sheets-${fi}`);
+  const toggle = document.getElementById(`toggle-${fi}`);
+  const open = sheets.classList.toggle('open');
+  toggle.classList.toggle('open', open);
+}
+
+// ───────────────────────────────────
+// DRAG FROM SOURCE
+// ───────────────────────────────────
+function onChipDragStart(e, fi, si, ci, name) {
+  state.dragItem = { fileIdx: fi, sheetIdx: si, colIdx: ci, colName: name };
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', name);
+  // ghost
+  dragGhostEl.textContent = name;
+  dragGhostEl.style.opacity = '1';
+  dragGhostEl.style.left = (mouseX + 14) + 'px';
+  dragGhostEl.style.top = (mouseY - 10) + 'px';
+  e.currentTarget.classList.add('dragging');
+  const img = new Image(); e.dataTransfer.setDragImage(img, 0, 0);
+}
+function onChipDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  dragGhostEl.style.opacity = '0';
+  state.dragItem = null;
+}
+
+// ───────────────────────────────────
+// DROP TARGET
+// ───────────────────────────────────
+const dropTarget = document.getElementById('dropTarget');
+dropTarget.addEventListener('dragover', e => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  dropTarget.classList.add('dragover');
+});
+dropTarget.addEventListener('dragleave', e => {
+  if (!dropTarget.contains(e.relatedTarget)) dropTarget.classList.remove('dragover');
+});
+dropTarget.addEventListener('drop', e => {
+  e.preventDefault();
+  dropTarget.classList.remove('dragover');
+  if (state.dragItem) {
+    const { fileIdx, sheetIdx, colIdx, colName } = state.dragItem;
+    addColumnToTarget(fileIdx, sheetIdx, colIdx, colName);
+  }
+});
+
+function addColumnToTarget(fi, si, ci, name) {
+  // Allow duplicate if user explicitly wants same column
+  const file = state.files[fi];
+  const sheet = file.sheets[si];
+  const label = `${file.name.replace(/\.[^.]+$/, '')} › ${sheet.name} › ${name}`;
+  state.target.push({ fileIdx: fi, sheetIdx: si, colIdx: ci, colName: name, label });
+  renderTarget();
+  renderFileList();
+  renderPreview();
+  updateStepDots();
+}
+
+function renderTarget() {
+  const el = document.getElementById('dropTarget');
+  const emptyEl = document.getElementById('dropEmpty');
+  // Remove old chips
+  el.querySelectorAll('.target-chip').forEach(c => c.remove());
+  emptyEl.style.display = state.target.length ? 'none' : 'flex';
+  document.getElementById('colCountInfo').textContent = `선택된 컬럼: ${state.target.length}개`;
+  document.getElementById('btnGenerate').disabled = state.target.length === 0;
+
+  state.target.forEach((t, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'target-chip';
+    chip.draggable = true;
+    chip.innerHTML = `
+      <span class="target-chip-src">${state.files[t.fileIdx].name.replace(/\.[^.]+$/,'')} › ${state.files[t.fileIdx].sheets[t.sheetIdx].name}</span>
+      <span class="target-chip-name">${escHtml(t.colName)}</span>
+      <span class="target-chip-del" onclick="removeTargetCol(${idx})" title="제거">✕</span>
+    `;
+    chip.addEventListener('dragstart', e => {
+      state.dragTargetIdx = idx;
+      chip.classList.add('dragging-target');
+      const img = new Image(); e.dataTransfer.setDragImage(img, 0, 0);
+    });
+    chip.addEventListener('dragend', () => { chip.classList.remove('dragging-target'); state.dragTargetIdx = null; });
+    chip.addEventListener('dragover', e => { e.preventDefault(); });
+    chip.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (state.dragTargetIdx !== null && state.dragTargetIdx !== idx) {
+        const moved = state.target.splice(state.dragTargetIdx, 1)[0];
+        state.target.splice(idx, 0, moved);
+        renderTarget(); renderPreview();
+      }
+    });
+    el.appendChild(chip);
+  });
+}
+
+function removeTargetCol(idx) {
+  state.target.splice(idx, 1);
+  renderTarget(); renderFileList(); renderPreview(); updateStepDots();
+}
+function clearTarget() {
+  if (!state.target.length) return;
+  state.target = [];
+  renderTarget(); renderFileList(); renderPreview(); updateStepDots();
+  toast('초기화되었습니다', 'success');
+}
+
+function addAllColumns() {
+  if (!state.files.length) { toast('먼저 파일을 선택하세요', 'error'); return; }
+  state.files.forEach((file, fi) => {
+    file.sheets.forEach((sheet, si) => {
+      sheet.headers.forEach((h, ci) => {
+        addColumnToTarget(fi, si, ci, h);
+      });
+    });
+  });
+  toast('모든 컬럼이 추가되었습니다', 'success');
+}
+
+function sortColumnsAlpha() {
+  state.target.sort((a, b) => a.colName.localeCompare(b.colName, 'ko'));
+  renderTarget(); renderPreview();
+}
+
+// ───────────────────────────────────
+// PREVIEW
+// ───────────────────────────────────
+function renderPreview() {
+  const content = document.getElementById('previewContent');
+  const emptyEl = document.getElementById('previewEmpty');
+  const rowCount = parseInt(document.getElementById('previewRows').value);
+
+  if (!state.target.length) {
+    content.innerHTML = '';
+    content.appendChild(emptyEl);
+    emptyEl.style.display = 'flex';
+    return;
+  }
+
+  // Build data
+  const maxRows = getMaxRows();
+  const previewMax = Math.min(rowCount, maxRows);
+  const headers = state.target.map(t => t.colName);
+  const srcLabels = state.target.map(t => `${state.files[t.fileIdx].name.replace(/\.[^.]+$/,'')} › ${state.files[t.fileIdx].sheets[t.sheetIdx].name}`);
+
+  content.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+  const table = document.createElement('table');
+  // Head
+  const thead = table.createTHead();
+  const tr = thead.insertRow();
+  headers.forEach((h, i) => {
+    const th = document.createElement('th');
+    th.innerHTML = `${escHtml(h)}<span class="th-src">${escHtml(srcLabels[i])}</span>`;
+    tr.appendChild(th);
+  });
+  // Body
+  const tbody = table.createTBody();
+  for (let r = 0; r < previewMax; r++) {
+    const row = tbody.insertRow();
+    state.target.forEach(t => {
+      const td = row.insertCell();
+      const sheet = state.files[t.fileIdx].sheets[t.sheetIdx];
+      const val = sheet.rows[r] ? (sheet.rows[r][t.colIdx] ?? '') : '';
+      td.textContent = val;
+      td.title = val;
+    });
+  }
+  wrap.appendChild(table);
+  content.appendChild(wrap);
+  if (previewMax < maxRows) {
+    const note = document.createElement('div');
+    note.style.cssText = 'padding:8px 14px;font-size:11px;color:var(--text3);flex-shrink:0';
+    note.textContent = `※ 상위 ${previewMax}행 미리보기 (전체 ${maxRows}행)`;
+    content.appendChild(note);
+  }
+}
+
+function getMaxRows() {
+  if (!state.target.length) return 0;
+  return Math.max(...state.target.map(t => state.files[t.fileIdx].sheets[t.sheetIdx].rows.length));
+}
+
+// ───────────────────────────────────
+// GENERATE EXCEL
+// ───────────────────────────────────
+async function generateExcel() {
+  if (!state.target.length) return;
+  showProgress('엑셀 파일 생성 중...', '데이터를 병합하고 있습니다');
+  await sleep(50);
+  try {
+    const wb = XLSX.utils.book_new();
+    const headers = state.target.map(t => t.colName);
+    const maxRows = getMaxRows();
+    const aoa = [headers];
+    for (let r = 0; r < maxRows; r++) {
+      const row = state.target.map(t => {
+        const sheet = state.files[t.fileIdx].sheets[t.sheetIdx];
+        return sheet.rows[r] ? (sheet.rows[r][t.colIdx] ?? '') : '';
+      });
+      aoa.push(row);
+    }
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Auto column width
+    const colWidths = headers.map((h, ci) => {
+      let max = h.length;
+      for (let r = 1; r < aoa.length; r++) {
+        const v = String(aoa[r][ci] ?? '');
+        if (v.length > max) max = v.length;
+      }
+      return { wch: Math.min(Math.max(max + 2, 8), 50) };
+    });
+    ws['!cols'] = colWidths;
+
+    // Header style
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c });
+      if (!ws[addr]) continue;
+      ws[addr].s = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '2d3561' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: {
+          bottom: { style: 'medium', color: { rgb: '4a6cf7' } }
+        }
+      };
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Merged');
+    XLSX.writeFile(wb, `merged_${timestamp()}.xlsx`);
+    hideProgress();
+    toast(`다운로드 완료! (${maxRows}행 · ${headers.length}컬럼)`, 'success');
+    updateStepDots(true);
+  } catch(e) {
+    hideProgress();
+    toast('엑셀 생성 중 오류: ' + e.message, 'error');
+  }
+}
+
+// ───────────────────────────────────
+// HELPERS
+// ───────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function formatSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/1024/1024).toFixed(1) + ' MB';
+}
+function timestamp() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function showProgress(text, sub) {
+  document.getElementById('progressText').textContent = text;
+  document.getElementById('progressSub').textContent = sub;
+  document.getElementById('progressOverlay').classList.add('show');
+}
+function hideProgress() {
+  document.getElementById('progressOverlay').classList.remove('show');
+}
+
+let toastTimer = null;
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span> ${escHtml(msg)}`;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toastOut 0.3s forwards';
+    setTimeout(() => el.remove(), 300);
+  }, 3000);
+}
+
+function updateStepDots(done = false) {
+  const d1 = document.getElementById('dot1');
+  const d2 = document.getElementById('dot2');
+  const d3 = document.getElementById('dot3');
+  const label = document.getElementById('stepLabel');
+  if (done) {
+    d1.className = 'step-dot done'; d2.className = 'step-dot done'; d3.className = 'step-dot done';
+    label.textContent = '완료!';
+  } else if (state.target.length > 0) {
+    d1.className = 'step-dot done'; d2.className = 'step-dot active'; d3.className = 'step-dot';
+    label.textContent = '컬럼 구성 중';
+  } else if (state.files.length > 0) {
+    d1.className = 'step-dot active'; d2.className = 'step-dot'; d3.className = 'step-dot';
+    label.textContent = '컬럼 선택';
+  } else {
+    d1.className = 'step-dot'; d2.className = 'step-dot'; d3.className = 'step-dot';
+    label.textContent = '파일 선택';
+  }
+}
+</script>
+</body>
+</html>
