@@ -649,6 +649,10 @@ function onCellChange(input, rowIdx, colIdx) {
   refreshStats();
 }
 
+function updateDirtyUI() {
+  setDirty(dirtyRows.size > 0 || newRowIndices.size > 0 || deletedRowIndices.size > 0);
+}
+
 /* ═══════════════════════════════════════════
    ROW / COLUMN OPERATIONS
 ═══════════════════════════════════════════ */
