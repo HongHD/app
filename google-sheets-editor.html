@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Google Sheets Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#080d18;
+  --surface:#0f1623;
+  --surface2:#162032;
+  --surface3:#1d2a40;
+  --border:rgba(99,179,237,.13);
+  --border2:rgba(99,179,237,.22);
+  --accent:#38bdf8;
+  --accent2:#6ee7b7;
+  --accent3:#a78bfa;
+  --text:#e2e8f0;
+  --text-muted:#64748b;
+  --danger:#f87171;
+  --warn:#fbbf24;
+  --success:#34d399;
+  --radius:14px;
+  --shadow:0 8px 40px rgba(0,0,0,.55);
+  --edit-bg:#0d1f12;
+  --edit-border:rgba(52,211,153,.35);
+  --dirty:#fbbf24;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 55% at 5% 8%,rgba(56,189,248,.07) 0%,transparent 60%),
+  radial-gradient(ellipse 55% 50% at 95% 85%,rgba(110,231,183,.06) 0%,transparent 55%),
+  radial-gradient(ellipse 40% 40% at 50% 50%,rgba(167,139,250,.03) 0%,transparent 60%);
+  pointer-events:none;z-index:0}
+
+/* ── LAYOUT ── */
+#app{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:28px 22px 60px}
+
+/* ── HEADER ── */
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:40px;padding-bottom:22px;border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 28px rgba(56,189,248,.4);flex-shrink:0}
+.brand h1{font-family:'Syne',sans-serif;font-size:1.45rem;font-weight:800;letter-spacing:-.03em;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.brand p{font-size:.76rem;color:var(--text-muted);margin-top:2px}
+#userArea{display:none;align-items:center;gap:12px}
+.avatar{width:36px;height:36px;border-radius:50%;border:2px solid var(--accent);object-fit:cover;flex-shrink:0}
+.user-name{font-size:.85rem;font-weight:500}
+.user-email{font-size:.74rem;color:var(--text-muted)}
+
+/* ── BUTTONS ── */
+.btn{font-family:'DM Sans',sans-serif;font-size:.86rem;font-weight:500;border:none;cursor:pointer;border-radius:10px;padding:9px 20px;transition:all .18s;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#0ea5e9);color:#080d18;box-shadow:0 4px 16px rgba(56,189,248,.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(56,189,248,.45)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:rgba(56,189,248,.08);border-color:var(--accent)}
+.btn-danger{background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.25)}
+.btn-danger:hover{background:rgba(248,113,113,.22)}
+.btn-success{background:linear-gradient(135deg,var(--success),#10b981);color:#080d18;box-shadow:0 4px 12px rgba(52,211,153,.3)}
+.btn-success:hover{transform:translateY(-2px)}
+.btn-warn{background:rgba(251,191,36,.12);color:var(--warn);border:1px solid rgba(251,191,36,.28)}
+.btn-warn:hover{background:rgba(251,191,36,.2)}
+.btn-purple{background:rgba(167,139,250,.15);color:var(--accent3);border:1px solid rgba(167,139,250,.3)}
+.btn-purple:hover{background:rgba(167,139,250,.25)}
+.btn-sm{padding:6px 13px;font-size:.78rem;border-radius:8px}
+.btn:disabled{opacity:.38;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+/* ── SECTIONS ── */
+.section{display:none}
+.section.active{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 30px;box-shadow:var(--shadow)}
+.card-title{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;margin-bottom:5px}
+.card-desc{font-size:.82rem;color:var(--text-muted);line-height:1.75;margin-bottom:20px}
+.field{margin-bottom:15px}
+.field label{display:block;font-size:.77rem;color:var(--text-muted);margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+.field input,.field select{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:.87rem;outline:none;transition:border .18s}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field input::placeholder{color:var(--text-muted)}
+.field select option{background:var(--surface2)}
+
+.notice{background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.22);border-radius:10px;padding:13px 16px;font-size:.81rem;color:#93c5fd;line-height:1.85;margin-bottom:18px}
+.notice b{color:var(--accent)}
+.notice a{color:var(--accent2)}
+
+/* ── LOGIN ── */
+.login-hero{text-align:center;padding:56px 20px}
+.login-hero h2{font-family:'Syne',sans-serif;font-size:2.1rem;font-weight:800;margin-bottom:11px;background:linear-gradient(120deg,#e2e8f0 25%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-hero p{color:var(--text-muted);font-size:.93rem;margin-bottom:32px}
+.google-btn{background:#fff;color:#1f2937;font-family:'DM Sans',sans-serif;font-size:.93rem;font-weight:600;border:none;border-radius:12px;padding:14px 30px;cursor:pointer;display:inline-flex;align-items:center;gap:12px;box-shadow:0 4px 24px rgba(0,0,0,.4);transition:all .2s}
+.google-btn:hover{transform:translateY(-3px);box-shadow:0 10px 36px rgba(0,0,0,.55)}
+.google-btn svg{width:21px;height:21px;flex-shrink:0}
+
+/* ── S2 LIST ── */
+.s2-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.s2-toolbar h2{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700}
+.badge{background:rgba(56,189,248,.15);color:var(--accent);font-size:.73rem;font-weight:600;padding:2px 10px;border-radius:999px;margin-left:8px}
+.s2-actions{display:flex;gap:8px}
+.search-bar{position:relative;margin-bottom:18px}
+.search-bar input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px 10px 38px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.87rem;outline:none;transition:border .18s}
+.search-bar input:focus{border-color:var(--accent)}
+.search-bar::before{content:'🔍';position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px}
+.sheet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:12px}
+.sheet-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;cursor:pointer;transition:all .18s;display:flex;align-items:flex-start;gap:13px}
+.sheet-item:hover{border-color:var(--accent);background:rgba(56,189,248,.05);transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.3)}
+.sheet-icon{width:38px;height:38px;flex-shrink:0;background:linear-gradient(135deg,#1a7f3c,#34a853);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.sheet-info{flex:1;min-width:0}
+.sheet-name{font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.sheet-meta{font-size:.73rem;color:var(--text-muted)}
+
+/* ── S3 EDITOR ── */
+.editor-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.editor-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.doc-title{font-family:'Syne',sans-serif;font-size:1.12rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.dirty-dot{width:9px;height:9px;border-radius:50%;background:var(--dirty);display:none;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.dirty-dot.show{display:inline-block}
+.editor-right{display:flex;gap:7px;flex-wrap:wrap}
+
+.tab-list{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.tab-chip{background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:5px 14px;font-size:.79rem;cursor:pointer;transition:all .18s;color:var(--text-muted)}
+.tab-chip.active,.tab-chip:hover{background:rgba(56,189,248,.15);border-color:var(--accent);color:var(--accent)}
+.tab-add-btn{background:rgba(110,231,183,.1);border:1px dashed rgba(110,231,183,.35);border-radius:999px;padding:5px 13px;font-size:.79rem;cursor:pointer;color:var(--accent2);transition:all .18s}
+.tab-add-btn:hover{background:rgba(110,231,183,.2)}
+
+.stats-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.stat-chip{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 16px;font-size:.78rem}
+.stat-chip span{color:var(--accent);font-weight:600}
+.stat-chip.warn span{color:var(--warn)}
+
+/* ── TABLE TOOLBAR ── */
+.table-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.table-toolbar-left{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ── TABLE ── */
+.table-wrap{overflow:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);max-height:500px}
+table{width:100%;border-collapse:collapse;font-size:.81rem}
+thead th{background:var(--surface2);color:var(--accent);font-family:'Syne',sans-serif;font-weight:600;font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;padding:11px 14px;white-space:nowrap;position:sticky;top:0;z-index:2;border-bottom:1px solid var(--border);user-select:none}
+thead th.col-handle{cursor:col-resize;position:relative}
+thead th.row-ctrl{width:44px;text-align:center;color:var(--text-muted);font-size:.7rem}
+tbody tr{border-bottom:1px solid rgba(99,179,237,.055);transition:background .12s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(56,189,248,.04)}
+tbody tr.dirty-row{background:rgba(251,191,36,.04)!important}
+tbody tr.new-row{background:rgba(52,211,153,.04)!important}
+tbody tr.del-row{opacity:.45;text-decoration:line-through}
+tbody td{padding:0;color:var(--text);white-space:nowrap;max-width:280px}
+tbody td.row-ctrl{padding:0 6px;text-align:center;vertical-align:middle}
+.row-ctrl-btn{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:3px;border-radius:5px;transition:all .15s;display:inline-flex}
+.row-ctrl-btn:hover{color:var(--danger);background:rgba(248,113,113,.12)}
+.row-ctrl-btn.add:hover{color:var(--success);background:rgba(52,211,153,.12)}
+
+/* ── EDITABLE CELL ── */
+.cell-input{width:100%;height:100%;padding:9px 14px;background:transparent;border:none;outline:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.81rem;cursor:default}
+.cell-input:focus{cursor:text;background:var(--edit-bg);box-shadow:inset 0 0 0 2px var(--edit-border);border-radius:4px}
+td.modified .cell-input{color:var(--warn)}
+
+/* ── SPINNER ── */
+.spinner-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 20px;gap:14px;color:var(--text-muted);font-size:.86rem}
+.spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.68);z-index:100;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:18px;padding:30px 32px;width:min(480px,93vw);box-shadow:var(--shadow)}
+.modal h3{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:6px}
+.modal p{font-size:.83rem;color:var(--text-muted);margin-bottom:20px;line-height:1.7}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid var(--border);border-radius:10px;padding:11px 22px;font-size:.83rem;box-shadow:var(--shadow);opacity:0;transition:opacity .28s;pointer-events:none;z-index:999;white-space:nowrap}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--success);color:var(--success)}
+#toast.err{border-color:var(--danger);color:var(--danger)}
+#toast.warn{border-color:var(--warn);color:var(--warn)}
+
+/* ── SAVE OVERLAY ── */
+#saveOverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-size:.9rem;color:var(--accent2);backdrop-filter:blur(6px)}
+#saveOverlay.open{display:flex}
+#saveOverlay .spinner{border-top-color:var(--accent2);width:44px;height:44px}
+
+@media(max-width:640px){
+  .sheet-grid{grid-template-columns:1fr}
+  header{flex-direction:column;align-items:flex-start;gap:12px}
+  .editor-topbar{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="brand">
+    <div class="brand-icon">📊</div>
+    <div>
+      <h1>Sheets Editor</h1>
+      <p>Google Spreadsheet 실시간 편집기</p>
+    </div>
+  </div>
+  <div id="userArea">
+    <div>
+      <div class="user-name" id="userName"></div>
+      <div class="user-email" id="userEmail"></div>
+    </div>
+    <img id="userAvatar" class="avatar" src="" alt=""/>
+    <button class="btn btn-danger btn-sm" onclick="signOut()">로그아웃</button>
+  </div>
+</header>
+
+<!-- ══ S0: CONFIG ══ -->
+<section id="s0" class="section active">
+  <div class="card" style="max-width:600px;margin:0 auto">
+    <div class="card-title">⚙️ Google API 설정</div>
+    <div class="card-desc">OAuth 2.0 클라이언트 ID를 입력하면 브라우저에 저장됩니다.</div>
+    <div class="notice">
+      <b>📋 빠른 설정 가이드</b><br>
+      1. <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> → 새 프로젝트 생성<br>
+      2. <b>Google Drive API</b> + <b>Google Sheets API</b> 활성화<br>
+      3. 사용자 인증 정보 → OAuth 2.0 클라이언트 ID 생성 (웹 애플리케이션)<br>
+      4. 승인된 JavaScript 원본에 <code style="color:var(--accent2)">http://localhost</code> 추가<br>
+      5. 클라이언트 ID 복사 → 아래 입력 → 저장
+    </div>
+    <div class="field">
+      <label>OAuth 2.0 클라이언트 ID</label>
+      <input id="clientIdInput" type="text" placeholder="123456789-xxxx.apps.googleusercontent.com"/>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px" onclick="saveConfig()">저장 후 계속 →</button>
+  </div>
+</section>
+
+<!-- ══ S1: LOGIN ══ -->
+<section id="s1" class="section">
+  <div class="login-hero">
+    <h2>Google 시트를 편집하세요</h2>
+    <p>로그인 후 모든 스프레드시트를 열람·편집하고 새 파일도 만들 수 있습니다</p>
+    <button class="google-btn" onclick="signIn()">
+      <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.1l-6.2-5.2C29.4 35.6 26.8 36.5 24 36.5c-5.2 0-9.6-3.1-11.5-7.5l-6.6 5.1C9.6 39.8 16.3 44 24 44z"/><path fill="#1565C0" d="M43.6 20H24v8h11.3c-.9 2.5-2.6 4.6-4.8 6l6.2 5.2C40.5 36.2 44 30.6 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
+      Google 계정으로 로그인
+    </button>
+    <div style="margin-top:20px"><button class="btn btn-secondary btn-sm" onclick="showSection('s0')">← API 설정 변경</button></div>
+  </div>
+</section>
+
+<!-- ══ S2: SPREADSHEET LIST ══ -->
+<section id="s2" class="section">
+  <div class="s2-toolbar">
+    <div>
+      <h2>내 스프레드시트 <span class="badge" id="sheetCount">0</span></h2>
+      <p style="font-size:.78rem;color:var(--text-muted);margin-top:4px">클릭하면 열람·편집 모드로 전환됩니다</p>
+    </div>
+    <div class="s2-actions">
+      <button class="btn btn-purple btn-sm" onclick="openCreateModal()">＋ 새 파일 만들기</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadSpreadsheetList()">🔄 새로고침</button>
+    </div>
+  </div>
+  <div class="search-bar"><input id="searchInput" type="text" placeholder="시트 이름 검색..." oninput="filterSheets()"/></div>
+  <div id="sheetGrid" class="sheet-grid"></div>
+</section>
+
+<!-- ══ S3: EDITOR ══ -->
+<section id="s3" class="section">
+  <div class="editor-topbar">
+    <div class="editor-left">
+      <button class="btn btn-secondary btn-sm" onclick="confirmLeave()">← 목록</button>
+      <div class="doc-title">
+        <span id="spreadsheetTitle">스프레드시트</span>
+        <span class="dirty-dot" id="dirtyDot" title="저장되지 않은 변경사항이 있습니다"></span>
+      </div>
+    </div>
+    <div class="editor-right">
+      <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-secondary btn-sm" onclick="copyToClipboard()">📋 복사</button>
+      <button class="btn btn-warn btn-sm" onclick="discardChanges()" id="discardBtn" disabled>↺ 되돌리기</button>
+      <button class="btn btn-success btn-sm" onclick="saveToGoogle()" id="saveBtn" disabled>💾 구글 시트에 저장</button>
+    </div>
+  </div>
+
+  <div id="tabList" class="tab-list"></div>
+  <div id="statsRow" class="stats-row"></div>
+
+  <div class="table-toolbar">
+    <div class="table-toolbar-left">
+      <button class="btn btn-secondary btn-sm" onclick="addRow()">＋ 행 추가</button>
+      <button class="btn btn-secondary btn-sm" onclick="addColumn()">＋ 열 추가</button>
+    </div>
+    <div style="font-size:.75rem;color:var(--text-muted)">
+      셀을 클릭하여 직접 편집 · <span style="color:var(--warn)">●</span> 변경됨 · <span style="color:var(--success)">●</span> 새 행
+    </div>
+  </div>
+
+  <div id="tableArea">
+    <div class="spinner-wrap"><div class="spinner"></div><span>로딩 중...</span></div>
+  </div>
+</section>
+
+</div><!-- /#app -->
+
+<!-- ══ MODALS ══ -->
+
+<!-- Create new file modal -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <h3>📄 새 스프레드시트 만들기</h3>
+    <p>새 파일을 Google Drive에 생성합니다. 이후 바로 편집 모드로 진입합니다.</p>
+    <div class="field"><label>파일 이름</label><input id="newFileName" type="text" placeholder="새 스프레드시트" /></div>
+    <div class="field"><label>첫 번째 시트 이름</label><input id="newSheetName" type="text" placeholder="Sheet1" /></div>
+    <div class="field"><label>헤더 열 (쉼표로 구분, 선택)</label><input id="newHeaders" type="text" placeholder="이름, 이메일, 부서, 직책" /></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('createModal')">취소</button>
+      <button class="btn btn-purple" onclick="createNewSpreadsheet()">✨ 생성하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add sheet tab modal -->
+<div class="modal-overlay" id="addTabModal">
+  <div class="modal">
+    <h3>➕ 새 시트 탭 추가</h3>
+    <p>현재 스프레드시트에 새 시트 탭을 추가합니다.</p>
+    <div class="field"><label>시트 이름</label><input id="newTabName" type="text" placeholder="새 시트" /></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('addTabModal')">취소</button>
+      <button class="btn btn-success" onclick="addSheetTab()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm leave modal -->
+<div class="modal-overlay" id="leaveModal">
+  <div class="modal">
+    <h3>⚠️ 저장하지 않은 변경사항</h3>
+    <p>변경된 내용이 있습니다. 저장하지 않고 목록으로 돌아가면 변경사항이 사라집니다.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('leaveModal')">계속 편집</button>
+      <button class="btn btn-warn" onclick="leaveWithoutSave()">저장 없이 나가기</button>
+      <button class="btn btn-success" onclick="saveAndLeave()">저장 후 나가기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save overlay -->
+<div id="saveOverlay">
+  <div class="spinner"></div>
+  <span id="saveOverlayMsg">Google 시트에 저장 중...</span>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+<script>
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let CLIENT_ID = '';
+const SCOPES = [
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/spreadsheets'
+].join(' ');
+
+let tokenClient = null;
+let accessToken  = null;
+let allSheets    = [];
+
+// Editor state
+let currentSpreadsheetId   = null;
+let currentSpreadsheetName = '';
+let currentTabName         = '';
+let currentTabs            = [];       // [{title, sheetId}]
+let originalData           = [];       // 2D array (immutable snapshot)
+let editedData             = [];       // 2D array (live edits)
+let dirtyRows              = new Set();
+let newRowIndices          = new Set();
+let deletedRowIndices      = new Set();
+let isDirty                = false;
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+window.onload = () => {
+  CLIENT_ID = localStorage.getItem('gs_client_id') || '';
+  if (CLIENT_ID) {
+    document.getElementById('clientIdInput').value = CLIENT_ID;
+    initGoogleAuth();
+    showSection('s1');
+  }
+};
+
+function saveConfig() {
+  const val = document.getElementById('clientIdInput').value.trim();
+  if (!val || !val.includes('.apps.googleusercontent.com')) {
+    toast('올바른 클라이언트 ID를 입력해주세요.', 'err'); return;
+  }
+  CLIENT_ID = val;
+  localStorage.setItem('gs_client_id', val);
+  initGoogleAuth();
+  showSection('s1');
+  toast('설정이 저장되었습니다.', 'ok');
+}
+
+function initGoogleAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: handleTokenResponse
+  });
+}
+
+/* ═══════════════════════════════════════════
+   AUTH
+═══════════════════════════════════════════ */
+function signIn() {
+  if (!tokenClient) { toast('API 설정을 먼저 완료해주세요.', 'err'); return; }
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+async function handleTokenResponse(resp) {
+  if (resp.error) { toast('로그인 실패: ' + resp.error, 'err'); return; }
+  accessToken = resp.access_token;
+  await loadUserInfo();
+  await loadSpreadsheetList();
+  showSection('s2');
+}
+
+async function loadUserInfo() {
+  const r = await gFetch('https://www.googleapis.com/oauth2/v3/userinfo');
+  if (!r) return;
+  document.getElementById('userName').textContent = r.name || '';
+  document.getElementById('userEmail').textContent = r.email || '';
+  document.getElementById('userAvatar').src = r.picture || '';
+  document.getElementById('userArea').style.display = 'flex';
+}
+
+function signOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null; allSheets = [];
+  document.getElementById('userArea').style.display = 'none';
+  showSection('s1');
+  toast('로그아웃 되었습니다.');
+}
+
+/* ═══════════════════════════════════════════
+   SPREADSHEET LIST
+═══════════════════════════════════════════ */
+async function loadSpreadsheetList() {
+  const grid = document.getElementById('sheetGrid');
+  grid.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div><span>목록 불러오는 중...</span></div>';
+  let items = [], pageToken = '';
+  do {
+    const url = `https://www.googleapis.com/drive/v3/files?q=mimeType%3D%27application%2Fvnd.google-apps.spreadsheet%27&fields=nextPageToken%2Cfiles(id%2Cname%2CmodifiedTime)&pageSize=100&orderBy=modifiedTime+desc${pageToken?'&pageToken='+pageToken:''}`;
+    const r = await gFetch(url);
+    if (!r) break;
+    items = items.concat(r.files || []);
+    pageToken = r.nextPageToken || '';
+  } while (pageToken);
+  allSheets = items;
+  document.getElementById('sheetCount').textContent = allSheets.length;
+  renderSheets(allSheets);
+}
+
+function renderSheets(list) {
+  const grid = document.getElementById('sheetGrid');
+  if (!list.length) { grid.innerHTML = '<p style="color:var(--text-muted);font-size:.87rem">스프레드시트가 없습니다.</p>'; return; }
+  grid.innerHTML = list.map(f => `
+    <div class="sheet-item" onclick="openSpreadsheet('${f.id}','${escAttr(f.name)}')">
+      <div class="sheet-icon">📗</div>
+      <div class="sheet-info">
+        <div class="sheet-name">${escHtml(f.name)}</div>
+        <div class="sheet-meta">수정: ${fmtDate(f.modifiedTime)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function filterSheets() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  renderSheets(allSheets.filter(s => s.name.toLowerCase().includes(q)));
+}
+
+/* ═══════════════════════════════════════════
+   OPEN SPREADSHEET
+═══════════════════════════════════════════ */
+async function openSpreadsheet(id, name) {
+  currentSpreadsheetId   = id;
+  currentSpreadsheetName = name;
+  document.getElementById('spreadsheetTitle').textContent = name;
+  resetEditorState();
+  document.getElementById('tabList').innerHTML = '';
+  document.getElementById('statsRow').innerHTML = '';
+  document.getElementById('tableArea').innerHTML = '<div class="spinner-wrap"><div class="spinner"></div><span>시트 불러오는 중...</span></div>';
+  showSection('s3');
+
+  const meta = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=sheets.properties`);
+  if (!meta) return;
+  currentTabs = (meta.sheets || []).map(s => ({ title: s.properties.title, sheetId: s.properties.sheetId }));
+  renderTabs(currentTabs);
+  if (currentTabs.length) await loadSheetData(id, currentTabs[0].title);
+}
+
+function renderTabs(tabs) {
+  const tl = document.getElementById('tabList');
+  tl.innerHTML = tabs.map((t, i) => `
+    <div class="tab-chip${i===0?' active':''}" id="tab_${i}" onclick="selectTab('${escAttr(t.title)}',${i})">${escHtml(t.title)}</div>`
+  ).join('');
+  tl.innerHTML += `<div class="tab-add-btn" onclick="openAddTabModal()">＋ 시트 추가</div>`;
+}
+
+function selectTab(name, idx) {
+  if (isDirty) {
+    if (!confirm('저장되지 않은 변경사항이 있습니다. 탭을 전환하면 변경사항이 사라집니다. 계속하시겠습니까?')) return;
+  }
+  document.querySelectorAll('.tab-chip').forEach((c, i) => c.classList.toggle('active', i === idx));
+  loadSheetData(currentSpreadsheetId, name);
+}
+
+/* ═══════════════════════════════════════════
+   LOAD SHEET DATA
+═══════════════════════════════════════════ */
+async function loadSheetData(id, sheetName) {
+  currentTabName = sheetName;
+  resetEditorState();
+  document.getElementById('statsRow').innerHTML = '';
+  document.getElementById('tableArea').innerHTML = '<div class="spinner-wrap"><div class="spinner"></div><span>데이터 불러오는 중...</span></div>';
+
+  const enc = encodeURIComponent(sheetName);
+  const r   = await gFetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${enc}`);
+  if (!r) return;
+
+  // Deep clone
+  originalData = (r.values || []).map(row => [...row]);
+  editedData   = originalData.map(row => [...row]);
+  renderEditorTable();
+}
+
+/* ═══════════════════════════════════════════
+   RENDER EDITABLE TABLE
+═══════════════════════════════════════════ */
+function renderEditorTable() {
+  const area  = document.getElementById('tableArea');
+  const stats = document.getElementById('statsRow');
+
+  if (!editedData.length) {
+    // Empty sheet — show empty grid with header row
+    editedData = [['열1', '열2', '열3']];
+    originalData = [];
+  }
+
+  const colCount = Math.max(...editedData.map(r => r.length), 1);
+  const header   = editedData[0] || [];
+  const body     = editedData.slice(1);
+
+  // Pad all header cells to colCount
+  while (header.length < colCount) header.push('');
+
+  const dirtyCount = dirtyRows.size;
+  const newCount   = newRowIndices.size;
+  stats.innerHTML = `
+    <div class="stat-chip">총 행 <span>${body.length.toLocaleString()}</span></div>
+    <div class="stat-chip">열 수 <span>${colCount}</span></div>
+    <div class="stat-chip">시트 <span>${escHtml(currentTabName)}</span></div>
+    ${dirtyCount ? `<div class="stat-chip warn">변경 <span>${dirtyCount}</span> 행</div>` : ''}
+    ${newCount   ? `<div class="stat-chip warn">새 행 <span>${newCount}</span></div>` : ''}`;
+
+  // Build thead
+  const thCells = header.map((h, ci) => `
+    <th class="col-handle">
+      <input class="cell-input" style="font-family:'Syne',sans-serif;font-weight:600;font-size:.76rem;text-transform:uppercase;color:var(--accent);letter-spacing:.05em"
+        value="${escAttr(h)}" data-row="0" data-col="${ci}"
+        onchange="onCellChange(this,0,${ci})"
+        onfocus="this.select()"
+      />
+    </th>`).join('');
+
+  const thead = `<thead><tr>
+    <th class="row-ctrl">#</th>
+    ${thCells}
+    <th class="row-ctrl"></th>
+  </tr></thead>`;
+
+  // Build tbody
+  const tbodyRows = body.map((row, ri) => {
+    const absRow = ri + 1;
+    const isNew  = newRowIndices.has(absRow);
+    const isDel  = deletedRowIndices.has(absRow);
+    const isDirtyR = dirtyRows.has(absRow);
+
+    const cells = Array.from({ length: colCount }, (_, ci) => {
+      const val = row[ci] !== undefined ? row[ci] : '';
+      const origVal = (originalData[absRow] || [])[ci] !== undefined ? (originalData[absRow] || [])[ci] : '';
+      const modified = val !== origVal && !isNew;
+      return `<td class="${modified ? 'modified' : ''}">
+        <input class="cell-input" value="${escAttr(val)}" data-row="${absRow}" data-col="${ci}"
+          onchange="onCellChange(this,${absRow},${ci})"
+          onfocus="this.select()"
+          ${isDel ? 'disabled' : ''}
+        /></td>`;
+    }).join('');
+
+    return `<tr class="${isNew ? 'new-row' : isDirtyR ? 'dirty-row' : ''} ${isDel ? 'del-row' : ''}" id="row_${absRow}">
+      <td class="row-ctrl" style="color:var(--text-muted);font-size:.72rem;padding:0 6px;text-align:center">${absRow}</td>
+      ${cells}
+      <td class="row-ctrl">
+        <button class="row-ctrl-btn" onclick="deleteRow(${absRow})" title="행 삭제">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  area.innerHTML = `<div class="table-wrap"><table>${thead}<tbody>${tbodyRows}</tbody></table></div>`;
+  updateDirtyUI();
+}
+
+/* ═══════════════════════════════════════════
+   CELL CHANGE
+═══════════════════════════════════════════ */
+function onCellChange(input, rowIdx, colIdx) {
+  const val = input.value;
+  // Ensure editedData row exists
+  while (editedData.length <= rowIdx) editedData.push([]);
+  while (editedData[rowIdx].length <= colIdx) editedData[rowIdx].push('');
+  editedData[rowIdx][colIdx] = val;
+
+  if (rowIdx > 0) {
+    // Check if different from original
+    const origVal = (originalData[rowIdx] || [])[colIdx] !== undefined
+      ? (originalData[rowIdx] || [])[colIdx] : '';
+    if (val !== origVal) {
+      dirtyRows.add(rowIdx);
+      const td = input.closest('td');
+      if (td) td.classList.add('modified');
+    } else {
+      // Check entire row is clean
+      const rowClean = editedData[rowIdx].every((v, ci) => {
+        const ov = (originalData[rowIdx] || [])[ci] !== undefined ? (originalData[rowIdx] || [])[ci] : '';
+        return v === ov;
+      });
+      if (rowClean) dirtyRows.delete(rowIdx);
+      const td = input.closest('td');
+      if (td) td.classList.toggle('modified', !rowClean);
+    }
+  }
+
+  setDirty(dirtyRows.size > 0 || newRowIndices.size > 0 || deletedRowIndices.size > 0);
+  refreshStats();
+}
+
+/* ═══════════════════════════════════════════
+   ROW / COLUMN OPERATIONS
+═══════════════════════════════════════════ */
+function addRow() {
+  const colCount = editedData[0] ? editedData[0].length : 3;
+  const newRow   = Array(colCount).fill('');
+  editedData.push(newRow);
+  const absIdx = editedData.length - 1;
+  newRowIndices.add(absIdx);
+  setDirty(true);
+  renderEditorTable();
+  // Scroll to bottom
+  const tw = document.querySelector('.table-wrap');
+  if (tw) tw.scrollTop = tw.scrollHeight;
+}
+
+function addColumn() {
+  const newHeader = `열${editedData[0] ? editedData[0].length + 1 : 1}`;
+  editedData.forEach((row, i) => {
+    row.push(i === 0 ? newHeader : '');
+  });
+  setDirty(true);
+  renderEditorTable();
+}
+
+function deleteRow(absIdx) {
+  if (!confirm(`${absIdx}번 행을 삭제하시겠습니까?`)) return;
+  if (newRowIndices.has(absIdx)) {
+    // Remove from editedData directly
+    editedData.splice(absIdx, 1);
+    newRowIndices.delete(absIdx);
+    // Remap new row indices
+    const shifted = new Set();
+    newRowIndices.forEach(i => shifted.add(i > absIdx ? i - 1 : i));
+    newRowIndices.clear();
+    shifted.forEach(i => newRowIndices.add(i));
+  } else {
+    deletedRowIndices.add(absIdx);
+    dirtyRows.add(absIdx);
+  }
+  setDirty(true);
+  renderEditorTable();
+}
+
+/* ═══════════════════════════════════════════
+   DIRTY STATE
+═══════════════════════════════════════════ */
+function setDirty(val) {
+  isDirty = val;
+  document.getElementById('dirtyDot').classList.toggle('show', val);
+  document.getElementById('saveBtn').disabled    = !val;
+  document.getElementById('discardBtn').disabled = !val;
+}
+
+function resetEditorState() {
+  isDirty = false;
+  dirtyRows.clear();
+  newRowIndices.clear();
+  deletedRowIndices.clear();
+  originalData = [];
+  editedData   = [];
+  setDirty(false);
+}
+
+function refreshStats() {
+  const stats = document.getElementById('statsRow');
+  if (!stats) return;
+  const colCount  = editedData[0] ? editedData[0].length : 0;
+  const bodyCount = editedData.length - 1;
+  const dirtyCount = dirtyRows.size;
+  const newCount   = newRowIndices.size;
+  stats.innerHTML = `
+    <div class="stat-chip">총 행 <span>${Math.max(0,bodyCount).toLocaleString()}</span></div>
+    <div class="stat-chip">열 수 <span>${colCount}</span></div>
+    <div class="stat-chip">시트 <span>${escHtml(currentTabName)}</span></div>
+    ${dirtyCount ? `<div class="stat-chip warn">변경 <span>${dirtyCount}</span> 행</div>` : ''}
+    ${newCount   ? `<div class="stat-chip warn">새 행 <span>${newCount}</span></div>` : ''}`;
+}
+
+function discardChanges() {
+  if (!confirm('모든 변경사항을 되돌리시겠습니까?')) return;
+  editedData = originalData.map(row => [...row]);
+  resetEditorState();
+  renderEditorTable();
+  toast('변경사항이 되돌려졌습니다.', 'warn');
+}
+
+/* ═══════════════════════════════════════════
+   SAVE TO GOOGLE SHEETS
+═══════════════════════════════════════════ */
+async function saveToGoogle() {
+  if (!isDirty) return;
+  showSaveOverlay('Google 시트에 저장 중...');
+
+  try {
+    // 1. Handle deletions — collect row indices to delete (1-based in editedData = 0-based header offset)
+    //    We need to clear/delete rows. Simplest: overwrite entire sheet.
+    const dataToWrite = buildWriteData();
+    await writeAllData(dataToWrite);
+    // Update originalData
+    originalData = editedData.map(r => [...r]);
+    resetEditorState();
+    renderEditorTable();
+    toast('✅ 구글 시트에 저장 완료!', 'ok');
+  } catch(e) {
+    toast('저장 실패: ' + e.message, 'err');
+  } finally {
+    hideSaveOverlay();
+  }
+}
+
+function buildWriteData() {
+  // Filter out deleted rows
+  return editedData.filter((_, i) => !deletedRowIndices.has(i));
+}
+
+async function writeAllData(data) {
+  const enc = encodeURIComponent(currentTabName);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${currentSpreadsheetId}/values/${enc}?valueInputOption=USER_ENTERED`;
+
+  // Pad rows to same column count
+  const colCount = Math.max(...data.map(r => r.length), 1);
+  const paddedData = data.map(row => {
+    const r = [...row];
+    while (r.length < colCount) r.push('');
+    return r;
+  });
+
+  const resp = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer ' + accessToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ range: currentTabName, majorDimension: 'ROWS', values: paddedData })
+  });
+
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.error?.message || '저장 오류');
+  }
+
+  // If rows were deleted, clear the remaining tail rows in Google Sheet
+  const originalRowCount = originalData.length;
+  const newRowCount      = paddedData.length;
+  if (newRowCount < originalRowCount) {
+    await clearTailRows(newRowCount + 1, originalRowCount);
+  }
+}
+
+async function clearTailRows(fromRow, toRow) {
+  const range = `${currentTabName}!A${fromRow}:ZZ${toRow}`;
+  const enc   = encodeURIComponent(range);
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${currentSpreadsheetId}/values/${enc}:clear`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' }
+  });
+}
+
+/* ═══════════════════════════════════════════
+   CREATE NEW SPREADSHEET
+═══════════════════════════════════════════ */
+function openCreateModal() {
+  document.getElementById('newFileName').value  = '새 스프레드시트';
+  document.getElementById('newSheetName').value = 'Sheet1';
+  document.getElementById('newHeaders').value   = '';
+  openModal('createModal');
+}
+
+async function createNewSpreadsheet() {
+  const title      = document.getElementById('newFileName').value.trim()  || '새 스프레드시트';
+  const sheetTitle = document.getElementById('newSheetName').value.trim() || 'Sheet1';
+  const headersRaw = document.getElementById('newHeaders').value.trim();
+  const headers    = headersRaw ? headersRaw.split(',').map(h => h.trim()) : [];
+
+  closeModal('createModal');
+  showSaveOverlay('새 스프레드시트 생성 중...');
+
+  try {
+    const body = {
+      properties: { title },
+      sheets: [{
+        properties: { title: sheetTitle },
+        data: headers.length ? [{
+          startRow: 0, startColumn: 0,
+          rowData: [{ values: headers.map(h => ({ userEnteredValue: { stringValue: h } })) }]
+        }] : []
+      }]
+    };
+
+    const resp = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      throw new Error(e.error?.message || '생성 오류');
+    }
+
+    const created = await resp.json();
+    hideSaveOverlay();
+    toast(`✅ "${title}" 파일이 생성되었습니다!`, 'ok');
+
+    // Add to list and open
+    allSheets.unshift({ id: created.spreadsheetId, name: title, modifiedTime: new Date().toISOString() });
+    document.getElementById('sheetCount').textContent = allSheets.length;
+    await openSpreadsheet(created.spreadsheetId, title);
+  } catch(e) {
+    hideSaveOverlay();
+    toast('생성 실패: ' + e.message, 'err');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   ADD SHEET TAB
+═══════════════════════════════════════════ */
+function openAddTabModal() {
+  document.getElementById('newTabName').value = `Sheet${currentTabs.length + 1}`;
+  openModal('addTabModal');
+}
+
+async function addSheetTab() {
+  const name = document.getElementById('newTabName').value.trim();
+  if (!name) { toast('시트 이름을 입력해주세요.', 'err'); return; }
+  closeModal('addTabModal');
+  showSaveOverlay('시트 탭 추가 중...');
+
+  try {
+    const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${currentSpreadsheetId}:batchUpdate`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{ addSheet: { properties: { title: name } } }]
+      })
+    });
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      throw new Error(e.error?.message || '탭 추가 오류');
+    }
+    const result = await resp.json();
+    const newProps = result.replies?.[0]?.addSheet?.properties;
+    currentTabs.push({ title: name, sheetId: newProps?.sheetId || 0 });
+    renderTabs(currentTabs);
+    // Select new tab
+    const idx = currentTabs.length - 1;
+    document.querySelectorAll('.tab-chip').forEach((c, i) => c.classList.toggle('active', i === idx));
+    await loadSheetData(currentSpreadsheetId, name);
+    toast(`✅ "${name}" 탭이 추가되었습니다!`, 'ok');
+  } catch(e) {
+    toast('탭 추가 실패: ' + e.message, 'err');
+  } finally {
+    hideSaveOverlay();
+  }
+}
+
+/* ═══════════════════════════════════════════
+   NAVIGATION GUARD
+═══════════════════════════════════════════ */
+function confirmLeave() {
+  if (isDirty) { openModal('leaveModal'); return; }
+  goToList();
+}
+function leaveWithoutSave() { closeModal('leaveModal'); goToList(); }
+async function saveAndLeave() {
+  closeModal('leaveModal');
+  await saveToGoogle();
+  goToList();
+}
+function goToList() {
+  resetEditorState();
+  showSection('s2');
+}
+
+/* ═══════════════════════════════════════════
+   EXPORT / COPY
+═══════════════════════════════════════════ */
+function exportCSV() {
+  const data = editedData.filter((_, i) => !deletedRowIndices.has(i));
+  if (!data.length) { toast('데이터가 없습니다.', 'err'); return; }
+  const csv = data.map(row => row.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentTabName || 'sheet'}.csv`;
+  a.click();
+  toast('CSV로 저장되었습니다.', 'ok');
+}
+
+function copyToClipboard() {
+  const data = editedData.filter((_, i) => !deletedRowIndices.has(i));
+  if (!data.length) { toast('데이터가 없습니다.', 'err'); return; }
+  const tsv = data.map(r => r.join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => toast('클립보드에 복사되었습니다.', 'ok'));
+}
+
+/* ═══════════════════════════════════════════
+   MODAL HELPERS
+═══════════════════════════════════════════ */
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+/* ═══════════════════════════════════════════
+   SAVE OVERLAY
+═══════════════════════════════════════════ */
+function showSaveOverlay(msg) {
+  document.getElementById('saveOverlayMsg').textContent = msg || '처리 중...';
+  document.getElementById('saveOverlay').classList.add('open');
+}
+function hideSaveOverlay() {
+  document.getElementById('saveOverlay').classList.remove('open');
+}
+
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+async function gFetch(url) {
+  try {
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      toast(e.error?.message || '오류가 발생했습니다.', 'err');
+      return null;
+    }
+    return r.json();
+  } catch(e) {
+    toast('네트워크 오류: ' + e.message, 'err');
+    return null;
+  }
+}
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+function escHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function escAttr(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3400);
+}
+
+// Warn on browser close if dirty
+window.addEventListener('beforeunload', e => {
+  if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+});
+</script>
+</body>
+</html>
