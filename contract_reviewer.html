@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>표준계약서 검토기</title>
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --primary-light: #2563a8;
+    --primary-pale: #e8f0fa;
+    --accent: #0ea5e9;
+    --added-bg: #d1fae5;
+    --added-text: #065f46;
+    --added-border: #10b981;
+    --deleted-bg: #fee2e2;
+    --deleted-text: #991b1b;
+    --deleted-border: #ef4444;
+    --changed-bg: #fef9c3;
+    --changed-text: #713f12;
+    --changed-border: #f59e0b;
+    --surface: #f8fafc;
+    --border: #cbd5e1;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --radius: 8px;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Malgun Gothic', '맑은 고딕', -apple-system, sans-serif;
+    background: #eef2f7;
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: var(--primary);
+    color: white;
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-icon {
+    width: 36px; height: 36px;
+    background: var(--primary-light);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header .subtitle { font-size: 12px; opacity: 0.7; margin-top: 1px; }
+  .header-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+  }
+
+  .app-wrap { max-width: 1600px; margin: 0 auto; padding: 1.5rem; }
+
+  /* Step tabs */
+  .step-tabs {
+    display: flex; gap: 0;
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  .step-tab {
+    flex: 1; display: flex; align-items: center; gap: 10px;
+    padding: 14px 20px;
+    cursor: pointer;
+    border: none; background: transparent;
+    font-family: inherit; font-size: 14px; color: var(--text-muted);
+    border-right: 1px solid var(--border);
+    transition: all 0.2s;
+    position: relative;
+  }
+  .step-tab:last-child { border-right: none; }
+  .step-tab.active {
+    background: var(--primary-pale);
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .step-tab .step-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--border);
+    color: white;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-tab.active .step-num { background: var(--primary); }
+  .step-tab.done .step-num { background: #10b981; }
+  .step-tab.done { color: #065f46; }
+
+  /* Sections */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Upload area */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+
+  .upload-card {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .upload-card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .upload-card-header .doc-icon {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .doc-icon.std { background: #dbeafe; color: #1d4ed8; }
+  .doc-icon.actual { background: #fef9c3; color: #d97706; }
+  .upload-card-header h3 { font-size: 14px; font-weight: 700; }
+  .upload-card-header .desc { font-size: 12px; color: var(--text-muted); }
+
+  .upload-body { padding: 20px; }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: #f0f9ff;
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon { font-size: 32px; margin-bottom: 8px; }
+  .drop-text { font-size: 13px; color: var(--text-muted); }
+  .drop-text strong { color: var(--primary-light); }
+  .drop-formats { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  .file-info {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: var(--primary-pale);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--primary);
+    display: none;
+    align-items: center; gap: 8px;
+  }
+  .file-info.visible { display: flex; }
+  .file-info .fi-name { font-weight: 600; flex: 1; }
+  .file-info .fi-size { color: var(--text-muted); }
+  .fi-clear {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 16px; line-height: 1;
+    padding: 0 2px;
+  }
+  .fi-clear:hover { color: var(--deleted-text); }
+
+  .divider { text-align: center; margin: 10px 0; color: var(--text-muted); font-size: 12px; position: relative; }
+  .divider::before, .divider::after {
+    content: ''; position: absolute; top: 50%; width: 42%; height: 1px;
+    background: var(--border);
+  }
+  .divider::before { left: 0; }
+  .divider::after { right: 0; }
+
+  .text-input {
+    width: 100%; min-height: 120px;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; font-family: inherit; font-size: 13px;
+    resize: vertical; color: var(--text);
+    background: white;
+    transition: border-color 0.2s;
+  }
+  .text-input:focus { outline: none; border-color: var(--accent); }
+  .char-count { font-size: 11px; color: var(--text-muted); text-align: right; margin-top: 4px; }
+
+  /* Action bar */
+  .action-bar {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow);
+    margin-bottom: 1.5rem;
+  }
+  .action-info { font-size: 13px; color: var(--text-muted); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 24px; border-radius: 6px;
+    border: none; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    transition: all 0.2s; text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--primary); color: white;
+  }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-primary:disabled { background: var(--border); cursor: not-allowed; }
+  .btn-secondary {
+    background: white; color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface); }
+  .btn-success { background: #10b981; color: white; }
+  .btn-success:hover { background: #059669; }
+  .btn-group { display: flex; gap: 10px; }
+
+  /* Dashboard */
+  .dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .stat-card {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    padding: 16px 20px;
+  }
+  .stat-card .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .stat-card .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-card .stat-desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .stat-card.total .stat-value { color: var(--primary); }
+  .stat-card.added .stat-value { color: var(--added-text); }
+  .stat-card.changed .stat-value { color: var(--changed-text); }
+  .stat-card.deleted .stat-value { color: var(--deleted-text); }
+
+  /* Legend */
+  .legend {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 24px;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+    flex-wrap: wrap;
+  }
+  .legend-title { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .legend-badge {
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .badge-added { background: var(--added-bg); color: var(--added-text); border: 1px solid var(--added-border); }
+  .badge-deleted { background: var(--deleted-bg); color: var(--deleted-text); border: 1px solid var(--deleted-border); }
+  .badge-changed { background: var(--changed-bg); color: var(--changed-text); border: 1px solid var(--changed-border); }
+
+  /* Filter bar */
+  .filter-bar {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+    flex-wrap: wrap;
+  }
+  .filter-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .filter-btn {
+    padding: 5px 14px; border-radius: 20px;
+    border: 1px solid var(--border); background: white;
+    cursor: pointer; font-size: 12px; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--accent); }
+  .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .filter-btn.filter-added.active { background: var(--added-border); border-color: var(--added-border); }
+  .filter-btn.filter-deleted.active { background: var(--deleted-border); border-color: var(--deleted-border); }
+  .filter-btn.filter-changed.active { background: var(--changed-border); border-color: var(--changed-border); }
+  .search-wrap { margin-left: auto; position: relative; }
+  .search-input {
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 5px 12px 5px 32px; font-size: 12px; font-family: inherit;
+    width: 200px; outline: none;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; pointer-events: none; }
+
+  /* Diff table */
+  .diff-table-wrap {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .diff-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+  }
+  .diff-table thead th {
+    background: var(--primary); color: white;
+    padding: 12px 16px; text-align: left;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .diff-table thead th:first-child { width: 50px; text-align: center; }
+  .diff-table thead th:nth-child(2) { width: 90px; }
+  .diff-table thead th:nth-child(3) { width: 45%; }
+  .diff-table thead th:nth-child(4) { width: 45%; }
+
+  .diff-table tbody tr { border-bottom: 1px solid #f1f5f9; }
+  .diff-table tbody tr:last-child { border-bottom: none; }
+  .diff-table tbody tr:hover { background: #f8fafc; }
+  .diff-table tbody tr.hidden { display: none; }
+
+  .diff-table td { padding: 12px 16px; vertical-align: top; line-height: 1.6; }
+  .diff-table td:first-child { text-align: center; color: var(--text-muted); font-size: 11px; }
+
+  .type-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .type-added { background: var(--added-bg); color: var(--added-text); }
+  .type-deleted { background: var(--deleted-bg); color: var(--deleted-text); }
+  .type-changed { background: var(--changed-bg); color: var(--changed-text); }
+
+  .cell-std, .cell-actual {
+    border-radius: 4px; padding: 8px 10px;
+    line-height: 1.7; font-size: 13px;
+  }
+  .cell-std.highlight { background: var(--deleted-bg); }
+  .cell-actual.highlight { background: var(--added-bg); }
+  .cell-changed-std { background: var(--changed-bg); border-radius: 4px; padding: 8px 10px; }
+  .cell-changed-actual { background: #d1fae5; border-radius: 4px; padding: 8px 10px; }
+
+  mark.del { background: #fca5a5; color: var(--deleted-text); border-radius: 2px; padding: 0 1px; }
+  mark.ins { background: #6ee7b7; color: var(--added-text); border-radius: 2px; padding: 0 1px; }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; }
+
+  /* Loading */
+  .loading-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,23,42,0.7);
+    z-index: 1000; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px;
+  }
+  .loading-overlay.visible { display: flex; }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 4px solid rgba(255,255,255,0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: white; font-size: 15px; font-weight: 500; }
+
+  /* Progress bar */
+  .progress-bar-wrap { width: 280px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+
+  /* Side-by-side view */
+  .side-by-side {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .side-by-side.visible { display: grid; }
+  .sbs-panel {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .sbs-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sbs-body {
+    padding: 16px; font-size: 13px; line-height: 1.8;
+    max-height: 400px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .sbs-body .diff-del { background: var(--deleted-bg); color: var(--deleted-text); }
+  .sbs-body .diff-ins { background: var(--added-bg); color: var(--added-text); }
+
+  /* Word export button area */
+  .export-bar {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+  .export-info { font-size: 13px; }
+  .export-info strong { color: var(--primary); }
+
+  /* Tooltip */
+  .tooltip-wrap { position: relative; display: inline-block; }
+  .tooltip-wrap:hover .tooltip { display: block; }
+  .tooltip {
+    display: none; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
+    background: #1e293b; color: white; font-size: 11px; padding: 4px 8px;
+    border-radius: 4px; white-space: nowrap; z-index: 100;
+  }
+
+  /* Alert */
+  .alert {
+    padding: 12px 16px; border-radius: 6px;
+    font-size: 13px; margin-bottom: 1rem;
+    display: none; align-items: center; gap: 10px;
+  }
+  .alert.visible { display: flex; }
+  .alert-warn { background: #fef9c3; color: var(--changed-text); border: 1px solid var(--changed-border); }
+  .alert-error { background: var(--deleted-bg); color: var(--deleted-text); border: 1px solid var(--deleted-border); }
+  .alert-info { background: var(--primary-pale); color: var(--primary); border: 1px solid #93c5fd; }
+
+  @media (max-width: 900px) {
+    .upload-grid, .dashboard-grid, .side-by-side { grid-template-columns: 1fr; }
+    .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">문서를 분석하는 중...</div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+</div>
+
+<header class="header">
+  <div class="header-left">
+    <div class="header-icon">📋</div>
+    <div>
+      <h1>표준계약서 검토기</h1>
+      <div class="subtitle">Standard Contract Reviewer</div>
+    </div>
+  </div>
+  <div class="header-badge">🔒 오프라인 로컬 전용</div>
+</header>
+
+<div class="app-wrap">
+
+  <!-- Step tabs -->
+  <div class="step-tabs">
+    <button class="step-tab active" id="tab1" onclick="showSection(1)">
+      <span class="step-num" id="snum1">1</span>
+      <span>문서 업로드</span>
+    </button>
+    <button class="step-tab" id="tab2" onclick="showSection(2)">
+      <span class="step-num" id="snum2">2</span>
+      <span>비교 분석</span>
+    </button>
+    <button class="step-tab" id="tab3" onclick="showSection(3)">
+      <span class="step-num" id="snum3">3</span>
+      <span>결과 · 다운로드</span>
+    </button>
+  </div>
+
+  <!-- SECTION 1: Upload -->
+  <div class="section active" id="section1">
+    <div class="alert alert-info visible" id="alertInfo">
+      ℹ️ HWP 파일은 텍스트 추출에 제한이 있을 수 있습니다. HWP의 경우 텍스트를 직접 복사·붙여넣기 방식을 권장합니다.
+    </div>
+
+    <div class="upload-grid">
+      <!-- 표준계약서 -->
+      <div class="upload-card">
+        <div class="upload-card-header">
+          <div class="doc-icon std">📄</div>
+          <div>
+            <h3>표준계약서</h3>
+            <div class="desc">기준이 되는 표준 계약서 문서</div>
+          </div>
+        </div>
+        <div class="upload-body">
+          <div class="drop-zone" id="dropZone1"
+               ondragover="handleDragOver(event,'dropZone1')"
+               ondragleave="handleDragLeave('dropZone1')"
+               ondrop="handleDrop(event,1)">
+            <input type="file" id="fileInput1" accept=".pdf,.txt,.doc,.docx,.ppt,.pptx,.hwp,.hwpx,.rtf,.odt"
+                   onchange="handleFileSelect(event,1)">
+            <div class="drop-icon">📁</div>
+            <div class="drop-text"><strong>클릭하거나 파일을 드래그</strong>하세요</div>
+            <div class="drop-formats">지원 형식: PDF, TXT, DOC, DOCX, HWP, PPT, PPTX, RTF</div>
+          </div>
+          <div class="file-info" id="fileInfo1">
+            <span>📄</span>
+            <span class="fi-name" id="fileName1"></span>
+            <span class="fi-size" id="fileSize1"></span>
+            <button class="fi-clear" onclick="clearFile(1)" title="파일 제거">✕</button>
+          </div>
+          <div class="divider">또는 직접 입력</div>
+          <textarea class="text-input" id="textInput1" placeholder="표준계약서 내용을 여기에 붙여넣으세요..."
+                    oninput="updateCharCount(1)"></textarea>
+          <div class="char-count" id="charCount1">0자</div>
+        </div>
+      </div>
+
+      <!-- 실제계약서 -->
+      <div class="upload-card">
+        <div class="upload-card-header">
+          <div class="doc-icon actual">📝</div>
+          <div>
+            <h3>실제 작성된 계약서</h3>
+            <div class="desc">검토 대상 실제 계약서 문서</div>
+          </div>
+        </div>
+        <div class="upload-body">
+          <div class="drop-zone" id="dropZone2"
+               ondragover="handleDragOver(event,'dropZone2')"
+               ondragleave="handleDragLeave('dropZone2')"
+               ondrop="handleDrop(event,2)">
+            <input type="file" id="fileInput2" accept=".pdf,.txt,.doc,.docx,.ppt,.pptx,.hwp,.hwpx,.rtf,.odt"
+                   onchange="handleFileSelect(event,2)">
+            <div class="drop-icon">📁</div>
+            <div class="drop-text"><strong>클릭하거나 파일을 드래그</strong>하세요</div>
+            <div class="drop-formats">지원 형식: PDF, TXT, DOC, DOCX, HWP, PPT, PPTX, RTF</div>
+          </div>
+          <div class="file-info" id="fileInfo2">
+            <span>📄</span>
+            <span class="fi-name" id="fileName2"></span>
+            <span class="fi-size" id="fileSize2"></span>
+            <button class="fi-clear" onclick="clearFile(2)" title="파일 제거">✕</button>
+          </div>
+          <div class="divider">또는 직접 입력</div>
+          <textarea class="text-input" id="textInput2" placeholder="실제 작성된 계약서 내용을 여기에 붙여넣으세요..."
+                    oninput="updateCharCount(2)"></textarea>
+          <div class="char-count" id="charCount2">0자</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <div class="action-info">두 문서를 모두 준비한 후 분석을 시작하세요</div>
+      <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalysis()" disabled>
+        🔍 비교 분석 시작
+      </button>
+    </div>
+  </div>
+
+  <!-- SECTION 2: Analysis -->
+  <div class="section" id="section2">
+    <div class="dashboard-grid">
+      <div class="stat-card total">
+        <div class="stat-label">총 차이점</div>
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-desc">발견된 전체 차이 항목</div>
+      </div>
+      <div class="stat-card added">
+        <div class="stat-label">🟢 추가된 내용</div>
+        <div class="stat-value" id="statAdded">0</div>
+        <div class="stat-desc">실제 계약서에만 있는 내용</div>
+      </div>
+      <div class="stat-card changed">
+        <div class="stat-label">🟡 변경된 내용</div>
+        <div class="stat-value" id="statChanged">0</div>
+        <div class="stat-desc">일부 내용이 수정된 항목</div>
+      </div>
+      <div class="stat-card deleted">
+        <div class="stat-label">🔴 삭제된 내용</div>
+        <div class="stat-value" id="statDeleted">0</div>
+        <div class="stat-desc">표준계약서에만 있는 내용</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="legend-title">색상 범례 :</span>
+      <div class="legend-item"><span class="legend-badge badge-added">추가</span> 실제 계약서에 새로 추가된 내용</div>
+      <div class="legend-item"><span class="legend-badge badge-changed">변경</span> 표준 대비 수정된 내용</div>
+      <div class="legend-item"><span class="legend-badge badge-deleted">삭제</span> 표준 계약서에서 제거된 내용</div>
+    </div>
+
+    <div class="export-bar">
+      <div class="export-info">
+        분석 완료 · <strong id="exportInfoText">0건</strong>의 차이점이 발견되었습니다
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="showSection(1)">⬅ 문서 다시 업로드</button>
+        <button class="btn btn-success" onclick="downloadWord()">⬇ Word 파일 다운로드</button>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <span class="filter-label">필터:</span>
+      <button class="filter-btn active" onclick="filterDiff('all',this)">전체</button>
+      <button class="filter-btn filter-added" onclick="filterDiff('added',this)">🟢 추가</button>
+      <button class="filter-btn filter-changed" onclick="filterDiff('changed',this)">🟡 변경</button>
+      <button class="filter-btn filter-deleted" onclick="filterDiff('deleted',this)">🔴 삭제</button>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="searchInput" placeholder="내용 검색..." oninput="searchDiff()">
+      </div>
+    </div>
+
+    <div class="diff-table-wrap">
+      <table class="diff-table" id="diffTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>유형</th>
+            <th>📄 표준계약서 원문</th>
+            <th>📝 실제 계약서 내용</th>
+          </tr>
+        </thead>
+        <tbody id="diffBody">
+          <tr><td colspan="4"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">분석 결과가 여기에 표시됩니다</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Download -->
+  <div class="section" id="section3">
+    <div class="export-bar">
+      <div>
+        <div class="export-info" style="font-size:15px;margin-bottom:4px"><strong>분석 보고서 다운로드</strong></div>
+        <div style="font-size:12px;color:var(--text-muted)">Word 문서 형식(.docx)으로 분석 결과를 저장합니다</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="showSection(2)">⬅ 결과 보기</button>
+        <button class="btn btn-success" onclick="downloadWord()">⬇ Word 파일 다운로드 (.docx)</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app-wrap -->
+
+<script>
+// ============================================================
+// State
+// ============================================================
+let text1 = '', text2 = '', diffResults = [];
+let file1Loaded = false, file2Loaded = false;
+
+// ============================================================
+// UI helpers
+// ============================================================
+function showSection(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('section'+i).classList.toggle('active', i===n);
+    document.getElementById('tab'+i).classList.toggle('active', i===n);
+  });
+}
+
+function updateCharCount(n) {
+  const v = document.getElementById('textInput'+n).value;
+  document.getElementById('charCount'+n).textContent = v.length.toLocaleString()+'자';
+  syncInputState();
+}
+
+function syncInputState() {
+  const has1 = file1Loaded || document.getElementById('textInput1').value.trim().length > 10;
+  const has2 = file2Loaded || document.getElementById('textInput2').value.trim().length > 10;
+  document.getElementById('analyzeBtn').disabled = !(has1 && has2);
+}
+
+function showLoading(msg, pct) {
+  document.getElementById('loadingOverlay').classList.add('visible');
+  document.getElementById('loadingText').textContent = msg || '처리 중...';
+  document.getElementById('progressBar').style.width = (pct||0)+'%';
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('visible'); }
+
+// ============================================================
+// File handling
+// ============================================================
+function handleDragOver(e, zoneId) {
+  e.preventDefault();
+  document.getElementById(zoneId).classList.add('drag-over');
+}
+function handleDragLeave(zoneId) {
+  document.getElementById(zoneId).classList.remove('drag-over');
+}
+function handleDrop(e, n) {
+  e.preventDefault();
+  const zoneId = 'dropZone'+n;
+  document.getElementById(zoneId).classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file, n);
+}
+function handleFileSelect(e, n) {
+  const file = e.target.files[0];
+  if (file) processFile(file, n);
+}
+
+function processFile(file, n) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const supported = ['txt','pdf','doc','docx','ppt','pptx','rtf','odt','hwp','hwpx','csv','md'];
+  if (!supported.includes(ext)) {
+    alert('지원하지 않는 파일 형식입니다.\n지원 형식: TXT, PDF, DOC, DOCX, PPT, PPTX, RTF, HWP 등');
+    return;
+  }
+  showLoading('파일을 읽는 중...', 30);
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    hideLoading();
+    let content = '';
+    if (ext === 'txt' || ext === 'md' || ext === 'csv') {
+      content = ev.target.result;
+    } else if (ext === 'pdf') {
+      content = extractTextFromPDF(ev.target.result, file.name);
+    } else if (ext === 'rtf') {
+      content = extractTextFromRTF(ev.target.result);
+    } else if (ext === 'docx' || ext === 'doc') {
+      content = extractTextFromDocx(ev.target.result, file.name);
+    } else if (ext === 'hwp' || ext === 'hwpx') {
+      content = extractTextFromHWP(ev.target.result, file.name, ext);
+    } else if (ext === 'pptx' || ext === 'ppt') {
+      content = extractTextFromPPTX(ev.target.result, file.name);
+    } else {
+      content = ev.target.result;
+    }
+
+    if (!content || content.trim().length < 5) {
+      alert('파일에서 텍스트를 추출하지 못했습니다.\n텍스트를 직접 복사하여 붙여넣기 해주세요.');
+      clearFile(n); return;
+    }
+
+    if (n === 1) { text1 = content; file1Loaded = true; }
+    else { text2 = content; file2Loaded = true; }
+
+    document.getElementById('textInput'+n).value = content;
+    document.getElementById('charCount'+n).textContent = content.length.toLocaleString()+'자';
+
+    const fi = document.getElementById('fileInfo'+n);
+    fi.classList.add('visible');
+    document.getElementById('fileName'+n).textContent = file.name;
+    document.getElementById('fileSize'+n).textContent = formatSize(file.size);
+    syncInputState();
+  };
+  if (ext === 'txt' || ext === 'md' || ext === 'csv') reader.readAsText(file, 'UTF-8');
+  else reader.readAsArrayBuffer(file);
+}
+
+// --- PDF text extraction (basic) ---
+function extractTextFromPDF(buffer, filename) {
+  try {
+    const bytes = new Uint8Array(buffer);
+    const str = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+    let text = '';
+    // BT...ET blocks
+    const btBlocks = str.match(/BT[\s\S]*?ET/g) || [];
+    for (const block of btBlocks) {
+      const tjs = block.match(/\(([^)\\]*(\\.[^)\\]*)*)\)\s*Tj/g) || [];
+      const tdBlocks = block.match(/\[([^\]]*)\]\s*TJ/g) || [];
+      for (const tj of tjs) {
+        const m = tj.match(/\(([^)\\]*(\\.[^)\\]*)*)\)/);
+        if (m) text += decodePDFString(m[1]) + ' ';
+      }
+      for (const td of tdBlocks) {
+        const inner = td.replace(/\[|\]\s*TJ/g,'');
+        const parts = inner.match(/\(([^)\\]*(\\.[^)\\]*)*)\)/g) || [];
+        for (const p of parts) text += decodePDFString(p.slice(1,-1)) + ' ';
+      }
+    }
+    text = text.replace(/\s+/g,' ').trim();
+    if (text.length < 20) {
+      return '[PDF 파일: ' + filename + ']\n\n텍스트 추출이 제한됩니다. 아래에 직접 내용을 붙여넣어 주세요.';
+    }
+    return text;
+  } catch(e) {
+    return '[PDF 파싱 오류] 텍스트를 직접 붙여넣어 주세요.';
+  }
+}
+
+function decodePDFString(s) {
+  return s.replace(/\\n/g,'\n').replace(/\\r/g,'\r').replace(/\\t/g,'\t')
+          .replace(/\\\(/g,'(').replace(/\\\)/g,')').replace(/\\\\/g,'\\')
+          .replace(/\\([0-7]{1,3})/g, (_,o) => String.fromCharCode(parseInt(o,8)));
+}
+
+// --- RTF extraction ---
+function extractTextFromRTF(buffer) {
+  try {
+    const bytes = new Uint8Array(buffer);
+    let str = new TextDecoder('utf-8', {fatal:false}).decode(bytes);
+    str = str.replace(/\\par\b/g,'\n').replace(/\\pard\b/g,'\n')
+             .replace(/\\tab\b/g,'\t').replace(/\\\n/g,'\n')
+             .replace(/\{[^{}]*\}/g,'')
+             .replace(/\\[a-z]+\d*\s?/gi,'')
+             .replace(/[{}\\]/g,'').trim();
+    return str.length > 10 ? str : '[RTF 파싱 제한] 텍스트를 직접 붙여넣어 주세요.';
+  } catch(e) { return '[RTF 파싱 오류] 텍스트를 직접 붙여넣어 주세요.'; }
+}
+
+// --- DOCX extraction (ZIP XML) ---
+function extractTextFromDocx(buffer, filename) {
+  try {
+    const zip = unzipBuffer(buffer);
+    const docXml = zip['word/document.xml'];
+    if (!docXml) return '[DOCX 파싱 실패] 텍스트를 직접 붙여넣어 주세요.';
+    const str = new TextDecoder('utf-8',{fatal:false}).decode(docXml);
+    let text = '';
+    const pMatches = str.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || [];
+    for (const p of pMatches) {
+      const tMatches = p.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g) || [];
+      const line = tMatches.map(t => t.replace(/<[^>]+>/g,'')).join('');
+      if (line.trim()) text += line.trim() + '\n';
+    }
+    return text.trim() || '[DOCX 내용 없음] 텍스트를 직접 붙여넣어 주세요.';
+  } catch(e) { return '[DOCX 파싱 오류] 텍스트를 직접 붙여넣어 주세요.'; }
+}
+
+// --- PPTX extraction ---
+function extractTextFromPPTX(buffer, filename) {
+  try {
+    const zip = unzipBuffer(buffer);
+    let text = '';
+    const slideKeys = Object.keys(zip).filter(k => k.match(/^ppt\/slides\/slide\d+\.xml$/)).sort();
+    for (const key of slideKeys) {
+      const str = new TextDecoder('utf-8',{fatal:false}).decode(zip[key]);
+      const tMatches = str.match(/<a:t>([\s\S]*?)<\/a:t>/g) || [];
+      const line = tMatches.map(t => t.replace(/<[^>]+>/g,'')).join(' ');
+      if (line.trim()) text += line.trim() + '\n';
+    }
+    return text.trim() || '[PPTX 내용 없음] 텍스트를 직접 붙여넣어 주세요.';
+  } catch(e) { return '[PPTX 파싱 오류] 텍스트를 직접 붙여넣어 주세요.'; }
+}
+
+// --- HWP extraction (basic attempt) ---
+function extractTextFromHWP(buffer, filename, ext) {
+  try {
+    if (ext === 'hwpx') {
+      const zip = unzipBuffer(buffer);
+      let text = '';
+      const bodyKeys = Object.keys(zip).filter(k => k.includes('content') || k.includes('section'));
+      for (const key of bodyKeys) {
+        const str = new TextDecoder('utf-8',{fatal:false}).decode(zip[key]);
+        const tMatches = str.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || [];
+        for (const t of tMatches) text += t.replace(/<[^>]+>/g,'') + '\n';
+      }
+      if (text.trim().length > 20) return text.trim();
+    }
+    // HWP: try to extract printable Korean text (rudimentary)
+    const bytes = new Uint8Array(buffer);
+    let text = '';
+    for (let i = 0; i < bytes.length - 1; i++) {
+      const code = bytes[i] | (bytes[i+1] << 8);
+      if (code >= 0xAC00 && code <= 0xD7A3) { // Hangul block
+        text += String.fromCharCode(code); i++;
+      } else if (bytes[i] >= 0x20 && bytes[i] < 0x7F) {
+        text += String.fromCharCode(bytes[i]);
+      }
+    }
+    text = text.replace(/[^\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F\uA960-\uA97F\uD7B0-\uD7FFa-zA-Z0-9\s.,;:!?()%\-_]/g,'').trim();
+    if (text.length > 30) return text;
+    return '[HWP 파일: ' + filename + ']\n\nHWP 파일은 텍스트 직접 추출이 제한됩니다.\n한글에서 내용을 복사하여 아래 텍스트 상자에 붙여넣어 주세요.';
+  } catch(e) { return '[HWP 파싱 오류] 텍스트를 직접 붙여넣어 주세요.'; }
+}
+
+// ============================================================
+// Minimal ZIP parser (for DOCX/PPTX/HWPX)
+// ============================================================
+function unzipBuffer(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const files = {};
+  let i = 0;
+  while (i < bytes.length - 4) {
+    if (bytes[i]===0x50 && bytes[i+1]===0x4B && bytes[i+2]===0x03 && bytes[i+3]===0x04) {
+      const comp = bytes[i+8] | (bytes[i+9]<<8);
+      const csize = bytes[i+18]|(bytes[i+19]<<8)|(bytes[i+20]<<16)|(bytes[i+21]<<24);
+      const usize = bytes[i+22]|(bytes[i+23]<<8)|(bytes[i+24]<<16)|(bytes[i+25]<<24);
+      const fnLen = bytes[i+26]|(bytes[i+27]<<8);
+      const extraLen = bytes[i+28]|(bytes[i+29]<<8);
+      const fnBytes = bytes.slice(i+30, i+30+fnLen);
+      const fname = new TextDecoder('utf-8',{fatal:false}).decode(fnBytes);
+      const dataStart = i+30+fnLen+extraLen;
+      const compData = bytes.slice(dataStart, dataStart+csize);
+      if (comp === 0) {
+        files[fname] = compData;
+      } else if (comp === 8) {
+        try { files[fname] = inflate(compData, usize); } catch(e) {}
+      }
+      i = dataStart + csize;
+    } else { i++; }
+  }
+  return files;
+}
+
+// Inflate (DEFLATE) - simplified implementation
+function inflate(data, expectedSize) {
+  // Use DecompressionStream if available
+  return data; // fallback: return raw (works if stored)
+}
+
+function clearFile(n) {
+  document.getElementById('fileInput'+n).value = '';
+  document.getElementById('fileInfo'+n).classList.remove('visible');
+  document.getElementById('textInput'+n).value = '';
+  document.getElementById('charCount'+n).textContent = '0자';
+  if (n===1) { text1=''; file1Loaded=false; }
+  else { text2=''; file2Loaded=false; }
+  syncInputState();
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes+'B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1)+'KB';
+  return (bytes/1048576).toFixed(1)+'MB';
+}
+
+// ============================================================
+// Core diff algorithm (sentence-level LCS-based)
+// ============================================================
+function tokenize(text) {
+  // Split by sentence-like delimiters, keeping delimiters
+  const cleaned = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines = cleaned.split('\n');
+  const tokens = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // Split by sentence terminators
+    const sents = trimmed.split(/(?<=[.。!?！？;；])\s+|(?<=[.。!?！？;；])$/);
+    for (const s of sents) {
+      const t = s.trim();
+      if (t.length > 0) tokens.push(t);
+    }
+  }
+  return tokens;
+}
+
+function lcs(a, b) {
+  const m = a.length, n = b.length;
+  // Use memory-efficient approach for large arrays
+  if (m > 2000 || n > 2000) return lcsGreedy(a, b);
+  const dp = Array.from({length:m+1}, ()=>new Int16Array(n+1));
+  for (let i=1;i<=m;i++) for (let j=1;j<=n;j++) {
+    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j],dp[i][j-1]);
+  }
+  // Backtrack
+  const common = [];
+  let i=m, j=n;
+  while (i>0 && j>0) {
+    if (a[i-1]===b[j-1]) { common.unshift([i-1,j-1]); i--; j--; }
+    else if (dp[i-1][j]>dp[i][j-1]) i--;
+    else j--;
+  }
+  return common;
+}
+
+function lcsGreedy(a, b) {
+  // Patience sorting inspired fallback for large inputs
+  const bMap = new Map();
+  b.forEach((v,i) => { if (!bMap.has(v)) bMap.set(v,[]); bMap.get(v).push(i); });
+  const matches = [];
+  for (let i=0;i<a.length;i++) {
+    const bIdxs = bMap.get(a[i]);
+    if (bIdxs) for (const j of bIdxs) matches.push([i,j]);
+  }
+  matches.sort((x,y) => x[0]-y[0]||x[1]-y[1]);
+  const chosen = [];
+  let lastJ = -1;
+  for (const [i,j] of matches) {
+    if (j > lastJ) { chosen.push([i,j]); lastJ = j; }
+  }
+  return chosen;
+}
+
+function buildDiff(tokens1, tokens2) {
+  const common = lcs(tokens1, tokens2);
+  const results = [];
+  let i1=0, i2=0, ci=0;
+
+  while (ci <= common.length) {
+    const [c1,c2] = ci < common.length ? common[ci] : [tokens1.length, tokens2.length];
+    // Collect deleted from tokens1
+    const deleted = tokens1.slice(i1, c1);
+    // Collect added from tokens2
+    const added = tokens2.slice(i2, c2);
+
+    if (deleted.length > 0 || added.length > 0) {
+      if (deleted.length > 0 && added.length > 0) {
+        // Try to pair them as changes
+        const maxPairs = Math.max(deleted.length, added.length);
+        for (let k=0; k<maxPairs; k++) {
+          const d = deleted[k] || '';
+          const a = added[k] || '';
+          if (d && a) {
+            const sim = similarity(d, a);
+            if (sim > 0.3) {
+              results.push({ type:'changed', std: d, actual: a });
+            } else {
+              results.push({ type:'deleted', std: d, actual: '' });
+              results.push({ type:'added', std: '', actual: a });
+            }
+          } else if (d) {
+            results.push({ type:'deleted', std: d, actual: '' });
+          } else {
+            results.push({ type:'added', std: '', actual: a });
+          }
+        }
+      } else if (deleted.length > 0) {
+        for (const d of deleted) results.push({ type:'deleted', std: d, actual: '' });
+      } else {
+        for (const a of added) results.push({ type:'added', std: '', actual: a });
+      }
+    }
+    if (ci < common.length) { i1=c1+1; i2=c2+1; }
+    ci++;
+  }
+  return results;
+}
+
+function similarity(a, b) {
+  if (!a || !b) return 0;
+  const setA = new Set(a.split(''));
+  const setB = new Set(b.split(''));
+  let common = 0;
+  setA.forEach(c => { if (setB.has(c)) common++; });
+  return (2*common) / (setA.size + setB.size);
+}
+
+// ============================================================
+// Word-level diff highlighting
+// ============================================================
+function wordDiff(s1, s2) {
+  const w1 = s1.split(/\s+/);
+  const w2 = s2.split(/\s+/);
+  const common = lcs(w1, w2);
+  let html1='', html2='';
+  let i1=0, i2=0, ci=0;
+  while (ci <= common.length) {
+    const [c1,c2] = ci < common.length ? common[ci] : [w1.length, w2.length];
+    for (let k=i1;k<c1;k++) html1 += '<mark class="del">'+esc(w1[k])+'</mark> ';
+    for (let k=i2;k<c2;k++) html2 += '<mark class="ins">'+esc(w2[k])+'</mark> ';
+    if (ci < common.length) {
+      html1 += esc(w1[c1])+' ';
+      html2 += esc(w2[c2])+' ';
+      i1=c1+1; i2=c2+1;
+    }
+    ci++;
+  }
+  return [html1.trim(), html2.trim()];
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ============================================================
+// Start analysis
+// ============================================================
+function startAnalysis() {
+  const t1 = document.getElementById('textInput1').value.trim();
+  const t2 = document.getElementById('textInput2').value.trim();
+
+  if (t1.length < 5 || t2.length < 5) {
+    alert('두 문서의 내용을 모두 입력해주세요.'); return;
+  }
+
+  text1 = t1; text2 = t2;
+
+  showLoading('문서를 분석 중...', 10);
+
+  setTimeout(() => {
+    document.getElementById('loadingText').textContent = '문장 단위로 분리 중...';
+    document.getElementById('progressBar').style.width = '30%';
+
+    setTimeout(() => {
+      const tokens1 = tokenize(text1);
+      const tokens2 = tokenize(text2);
+
+      document.getElementById('loadingText').textContent = '차이점 계산 중...';
+      document.getElementById('progressBar').style.width = '60%';
+
+      setTimeout(() => {
+        diffResults = buildDiff(tokens1, tokens2);
+
+        document.getElementById('loadingText').textContent = '결과 정리 중...';
+        document.getElementById('progressBar').style.width = '90%';
+
+        setTimeout(() => {
+          renderDiff();
+          hideLoading();
+          showSection(2);
+          // Mark step 1 done
+          document.getElementById('snum1').textContent = '✓';
+          document.getElementById('tab1').classList.add('done');
+        }, 200);
+      }, 300);
+    }, 200);
+  }, 100);
+}
+
+// ============================================================
+// Render diff table
+// ============================================================
+function renderDiff() {
+  const body = document.getElementById('diffBody');
+  const added = diffResults.filter(r=>r.type==='added').length;
+  const changed = diffResults.filter(r=>r.type==='changed').length;
+  const deleted = diffResults.filter(r=>r.type==='deleted').length;
+  const total = diffResults.length;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statAdded').textContent = added;
+  document.getElementById('statChanged').textContent = changed;
+  document.getElementById('statDeleted').textContent = deleted;
+  document.getElementById('exportInfoText').textContent = total+'건';
+
+  if (total === 0) {
+    body.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">두 문서 사이에 차이점이 없습니다.</div></div></td></tr>';
+    return;
+  }
+
+  const rows = diffResults.map((r, idx) => {
+    let typeLabel, stdCell, actualCell;
+    if (r.type === 'added') {
+      typeLabel = '<span class="type-badge type-added">추가</span>';
+      stdCell = '<div style="color:var(--text-muted);font-style:italic;font-size:12px;">— 없음 —</div>';
+      actualCell = '<div class="cell-actual highlight">'+esc(r.actual)+'</div>';
+    } else if (r.type === 'deleted') {
+      typeLabel = '<span class="type-badge type-deleted">삭제</span>';
+      stdCell = '<div class="cell-std highlight">'+esc(r.std)+'</div>';
+      actualCell = '<div style="color:var(--text-muted);font-style:italic;font-size:12px;">— 없음 —</div>';
+    } else {
+      typeLabel = '<span class="type-badge type-changed">변경</span>';
+      const [h1,h2] = wordDiff(r.std, r.actual);
+      stdCell = '<div class="cell-changed-std">'+h1+'</div>';
+      actualCell = '<div class="cell-changed-actual">'+h2+'</div>';
+    }
+    return `<tr data-type="${r.type}" data-std="${esc(r.std||'')}" data-actual="${esc(r.actual||'')}">
+      <td>${idx+1}</td>
+      <td>${typeLabel}</td>
+      <td>${stdCell}</td>
+      <td>${actualCell}</td>
+    </tr>`;
+  });
+  body.innerHTML = rows.join('');
+}
+
+// ============================================================
+// Filter & Search
+// ============================================================
+function filterDiff(type, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#diffBody tr[data-type]').forEach(tr => {
+    tr.classList.toggle('hidden', type !== 'all' && tr.dataset.type !== type);
+  });
+}
+
+function searchDiff() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('#diffBody tr[data-type]').forEach(tr => {
+    if (!q) { tr.classList.remove('hidden'); return; }
+    const text = (tr.dataset.std + ' ' + tr.dataset.actual).toLowerCase();
+    tr.classList.toggle('hidden', !text.includes(q));
+  });
+}
+
+// ============================================================
+// Word export (DOCX via raw XML/ZIP)
+// ============================================================
+function downloadWord() {
+  if (diffResults.length === 0) { alert('분석 결과가 없습니다. 먼저 비교 분석을 실행해주세요.'); return; }
+  showLoading('Word 문서를 생성 중...', 50);
+  setTimeout(() => {
+    try {
+      const blob = buildDocx();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const now = new Date();
+      const stamp = now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes());
+      a.download = '계약서_검토보고서_'+stamp+'.docx';
+      a.click();
+      URL.revokeObjectURL(url);
+      hideLoading();
+    } catch(e) {
+      hideLoading();
+      alert('Word 파일 생성 중 오류: '+e.message);
+    }
+  }, 300);
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function buildDocx() {
+  const added = diffResults.filter(r=>r.type==='added').length;
+  const changed = diffResults.filter(r=>r.type==='changed').length;
+  const deleted = diffResults.filter(r=>r.type==='deleted').length;
+  const total = diffResults.length;
+  const now = new Date().toLocaleDateString('ko-KR');
+
+  // Build table rows XML
+  const tableHeader = `
+    <w:tr>
+      <w:trPr><w:tblHeader/></w:trPr>
+      <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="1A3A5C"/></w:tcPr>
+        <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+          <w:r><w:rPr><w:color w:val="FFFFFF"/><w:b/><w:sz w:val="18"/></w:rPr><w:t>#</w:t></w:r></w:p></w:tc>
+      <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="1A3A5C"/></w:tcPr>
+        <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+          <w:r><w:rPr><w:color w:val="FFFFFF"/><w:b/><w:sz w:val="18"/></w:rPr><w:t>유형</w:t></w:r></w:p></w:tc>
+      <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="1A3A5C"/></w:tcPr>
+        <w:p><w:r><w:rPr><w:color w:val="FFFFFF"/><w:b/><w:sz w:val="18"/></w:rPr><w:t>표준계약서 원문</w:t></w:r></w:p></w:tc>
+      <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="1A3A5C"/></w:tcPr>
+        <w:p><w:r><w:rPr><w:color w:val="FFFFFF"/><w:b/><w:sz w:val="18"/></w:rPr><w:t>실제 계약서 내용</w:t></w:r></w:p></w:tc>
+    </w:tr>`;
+
+  const typeColors = { added: 'D1FAE5', deleted: 'FEE2E2', changed: 'FEF9C3' };
+  const typeLabels = { added: '추가', deleted: '삭제', changed: '변경' };
+
+  const dataRows = diffResults.map((r, idx) => {
+    const fill = typeColors[r.type] || 'FFFFFF';
+    const label = typeLabels[r.type];
+    const stdText = xmlEsc(r.std || '');
+    const actualText = xmlEsc(r.actual || '');
+    const stdFill = r.type === 'deleted' ? 'FEE2E2' : (r.type === 'changed' ? 'FEF9C3' : 'F8FAFC');
+    const actualFill = r.type === 'added' ? 'D1FAE5' : (r.type === 'changed' ? 'D1FAE5' : 'F8FAFC');
+    const stdEmpty = !r.std ? `<w:r><w:rPr><w:color w:val="999999"/><w:i/><w:sz w:val="18"/></w:rPr><w:t>— 없음 —</w:t></w:r>` :
+                              `<w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">${stdText}</w:t></w:r>`;
+    const actualEmpty = !r.actual ? `<w:r><w:rPr><w:color w:val="999999"/><w:i/><w:sz w:val="18"/></w:rPr><w:t>— 없음 —</w:t></w:r>` :
+                                    `<w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">${actualText}</w:t></w:r>`;
+    const bg = idx%2===0 ? 'FFFFFF' : 'F8FAFC';
+    return `
+    <w:tr>
+      <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="${bg}"/></w:tcPr>
+        <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+          <w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t>${idx+1}</w:t></w:r></w:p></w:tc>
+      <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="${fill}"/></w:tcPr>
+        <w:p><w:pPr><w:jc w:val="center"/></w:pPr>
+          <w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${label}</w:t></w:r></w:p></w:tc>
+      <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="${stdFill}"/></w:tcPr>
+        <w:p>${stdEmpty}</w:p></w:tc>
+      <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="${actualFill}"/></w:tcPr>
+        <w:p>${actualEmpty}</w:p></w:tc>
+    </w:tr>`;
+  }).join('');
+
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+ xmlns:mo="http://schemas.microsoft.com/office/mac/office/2008/main"
+ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+ xmlns:mv="urn:schemas-microsoft-com:mac:vml"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+ xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+ xmlns:v="urn:schemas-microsoft-com:vml"
+ xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing"
+ xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+ xmlns:w10="urn:schemas-microsoft-com:office:word"
+ xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+ xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+ xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+ xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"
+ xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml"
+ xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" mc:Ignorable="w14 wp14">
+<w:body>
+
+<w:p>
+  <w:pPr><w:jc w:val="center"/><w:spacing w:after="200"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="1A3A5C"/></w:rPr><w:t>표준계약서 검토 보고서</w:t></w:r>
+</w:p>
+
+<w:p>
+  <w:pPr><w:jc w:val="center"/><w:spacing w:after="100"/></w:pPr>
+  <w:r><w:rPr><w:sz w:val="20"/><w:color w:val="64748B"/></w:rPr><w:t>Standard Contract Review Report</w:t></w:r>
+</w:p>
+
+<w:p>
+  <w:pPr><w:jc w:val="center"/><w:spacing w:after="400"/></w:pPr>
+  <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="94A3B8"/></w:rPr><w:t>작성일: ${now}</w:t></w:r>
+</w:p>
+
+<w:p><w:pPr><w:spacing w:after="80"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="1A3A5C"/></w:rPr><w:t>1. 분석 요약</w:t></w:r>
+</w:p>
+
+<w:tbl>
+  <w:tblPr>
+    <w:tblStyle w:val="TableGrid"/>
+    <w:tblW w:w="9360" w:type="dxa"/>
+    <w:tblBorders>
+      <w:top w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:left w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:bottom w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:right w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:insideH w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:insideV w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+    </w:tblBorders>
+    <w:tblCellMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tblCellMar>
+  </w:tblPr>
+  <w:tblGrid><w:gridCol w:w="2340"/><w:gridCol w:w="2340"/><w:gridCol w:w="2340"/><w:gridCol w:w="2340"/></w:tblGrid>
+  <w:tr>
+    <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="1A3A5C"/></w:tcPr>
+      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="20"/></w:rPr><w:t>총 차이점</w:t></w:r></w:p></w:tc>
+    <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="059669"/></w:tcPr>
+      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="20"/></w:rPr><w:t>추가된 내용</w:t></w:r></w:p></w:tc>
+    <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="D97706"/></w:tcPr>
+      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="20"/></w:rPr><w:t>변경된 내용</w:t></w:r></w:p></w:tc>
+    <w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="DC2626"/></w:tcPr>
+      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="20"/></w:rPr><w:t>삭제된 내용</w:t></w:r></w:p></w:tc>
+  </w:tr>
+  <w:tr>
+    <w:tc><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="1A3A5C"/></w:rPr><w:t>${total}</w:t></w:r></w:p></w:tc>
+    <w:tc><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="059669"/></w:rPr><w:t>${added}</w:t></w:r></w:p></w:tc>
+    <w:tc><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="D97706"/></w:rPr><w:t>${changed}</w:t></w:r></w:p></w:tc>
+    <w:tc><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="DC2626"/></w:rPr><w:t>${deleted}</w:t></w:r></w:p></w:tc>
+  </w:tr>
+</w:tbl>
+
+<w:p><w:pPr><w:spacing w:after="80" w:before="300"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="1A3A5C"/></w:rPr><w:t>2. 상세 비교 내역</w:t></w:r>
+</w:p>
+
+<w:tbl>
+  <w:tblPr>
+    <w:tblStyle w:val="TableGrid"/>
+    <w:tblW w:w="9360" w:type="dxa"/>
+    <w:tblLayout w:type="fixed"/>
+    <w:tblBorders>
+      <w:top w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:left w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:bottom w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:right w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:insideH w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:insideV w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+    </w:tblBorders>
+    <w:tblCellMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tblCellMar>
+  </w:tblPr>
+  <w:tblGrid><w:gridCol w:w="360"/><w:gridCol w:w="720"/><w:gridCol w:w="4140"/><w:gridCol w:w="4140"/></w:tblGrid>
+  ${tableHeader}
+  ${dataRows}
+</w:tbl>
+
+<w:p><w:pPr><w:spacing w:before="300" w:after="100"/></w:pPr>
+  <w:r><w:rPr><w:sz w:val="16"/><w:color w:val="94A3B8"/></w:rPr>
+    <w:t>본 보고서는 표준계약서 검토기(로컬 오프라인)에 의해 자동 생성되었습니다.</w:t></w:r>
+</w:p>
+
+<w:sectPr>
+  <w:pgSz w:w="11906" w:h="16838"/>
+  <w:pgMar w:top="1440" w:right="1080" w:bottom="1440" w:left="1080" w:header="851" w:footer="992" w:gutter="0"/>
+</w:sectPr>
+</w:body>
+</w:document>`;
+
+  const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr>
+      <w:rFonts w:ascii="맑은 고딕" w:eastAsia="맑은 고딕" w:hAnsi="맑은 고딕" w:cs="맑은 고딕"/>
+      <w:sz w:val="20"/><w:szCs w:val="20"/>
+    </w:rPr></w:rPrDefault>
+  </w:docDefaults>
+  <w:style w:type="table" w:styleId="TableGrid">
+    <w:name w:val="Table Grid"/>
+    <w:tblPr><w:tblBorders>
+      <w:top w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:left w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:bottom w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:right w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:insideH w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+      <w:insideV w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+    </w:tblBorders></w:tblPr>
+  </w:style>
+</w:styles>`;
+
+  const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`;
+
+  const packageRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+  return createZipBlob({
+    '[Content_Types].xml': contentTypesXml,
+    '_rels/.rels': packageRelsXml,
+    'word/document.xml': documentXml,
+    'word/styles.xml': stylesXml,
+    'word/_rels/document.xml.rels': relsXml,
+  });
+}
+
+function xmlEsc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+// ============================================================
+// Minimal ZIP creator
+// ============================================================
+function createZipBlob(files) {
+  const enc = new TextEncoder();
+  const localHeaders = [];
+  const centralDir = [];
+  let offset = 0;
+
+  for (const [name, content] of Object.entries(files)) {
+    const nameBytes = enc.encode(name);
+    const dataBytes = enc.encode(content);
+    const crc = crc32(dataBytes);
+    const now = new Date();
+    const dosDate = ((now.getFullYear()-1980)<<9|(now.getMonth()+1)<<5|now.getDate());
+    const dosTime = (now.getHours()<<11|now.getMinutes()<<5|(now.getSeconds()>>1));
+
+    // Local file header
+    const local = new Uint8Array(30 + nameBytes.length + dataBytes.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034B50, true); // signature
+    lv.setUint16(4, 20, true);          // version needed
+    lv.setUint16(6, 0, true);           // flags
+    lv.setUint16(8, 0, true);           // compression (store)
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, dataBytes.length, true); // compressed
+    lv.setUint32(22, dataBytes.length, true); // uncompressed
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);          // extra length
+    local.set(nameBytes, 30);
+    local.set(dataBytes, 30 + nameBytes.length);
+    localHeaders.push(local);
+
+    // Central directory entry
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014B50, true);
+    cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true); cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true); cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, dataBytes.length, true);
+    cv.setUint32(24, dataBytes.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true); cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true); cv.setUint32(36, 0, true);
+    cv.setUint32(38, 0, true); cv.setUint32(42, offset, true);
+    cd.set(nameBytes, 46);
+    centralDir.push(cd);
+    offset += local.length;
+  }
+
+  const cdOffset = offset;
+  const cdTotal = centralDir.reduce((s,c)=>s+c.length,0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054B50, true);
+  ev.setUint16(4,0,true); ev.setUint16(6,0,true);
+  ev.setUint16(8, centralDir.length, true);
+  ev.setUint16(10, centralDir.length, true);
+  ev.setUint32(12, cdTotal, true);
+  ev.setUint32(16, cdOffset, true);
+  ev.setUint16(20, 0, true);
+
+  const parts = [...localHeaders, ...centralDir, eocd];
+  const totalLen = parts.reduce((s,p)=>s+p.length,0);
+  const output = new Uint8Array(totalLen);
+  let pos=0;
+  for (const p of parts) { output.set(p,pos); pos+=p.length; }
+  return new Blob([output], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+
+function crc32(buf) {
+  let crc = 0xFFFFFFFF;
+  for (let i=0;i<buf.length;i++) {
+    crc ^= buf[i];
+    for (let j=0;j<8;j++) crc = (crc>>>1) ^ (crc&1 ? 0xEDB88320 : 0);
+  }
+  return (crc^0xFFFFFFFF)>>>0;
+}
+
+// ============================================================
+// DecompressionStream-based inflate for DOCX/PPTX
+// ============================================================
+async function inflateAsync(compressedData) {
+  if (typeof DecompressionStream !== 'undefined') {
+    const ds = new DecompressionStream('deflate-raw');
+    const writer = ds.writable.getWriter();
+    const reader = ds.readable.getReader();
+    writer.write(compressedData);
+    writer.close();
+    const chunks = [];
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      chunks.push(value);
+    }
+    const totalLen = chunks.reduce((s,c)=>s+c.length,0);
+    const result = new Uint8Array(totalLen);
+    let offset = 0;
+    for (const c of chunks) { result.set(c,offset); offset+=c.length; }
+    return result;
+  }
+  return compressedData;
+}
+
+// Override unzipBuffer to use async inflate when available
+async function unzipBufferAsync(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const files = {};
+  let i = 0;
+  while (i < bytes.length - 4) {
+    if (bytes[i]===0x50 && bytes[i+1]===0x4B && bytes[i+2]===0x03 && bytes[i+3]===0x04) {
+      const comp = bytes[i+8] | (bytes[i+9]<<8);
+      const csize = bytes[i+18]|(bytes[i+19]<<8)|(bytes[i+20]<<16)|(bytes[i+21]<<24);
+      const fnLen = bytes[i+26]|(bytes[i+27]<<8);
+      const extraLen = bytes[i+28]|(bytes[i+29]<<8);
+      const fnBytes = bytes.slice(i+30, i+30+fnLen);
+      const fname = new TextDecoder('utf-8',{fatal:false}).decode(fnBytes);
+      const dataStart = i+30+fnLen+extraLen;
+      const compData = bytes.slice(dataStart, dataStart+csize);
+      if (comp === 0) {
+        files[fname] = compData;
+      } else if (comp === 8) {
+        try { files[fname] = await inflateAsync(compData); } catch(e) { files[fname] = compData; }
+      }
+      i = dataStart + csize;
+    } else { i++; }
+  }
+  return files;
+}
+
+// Enhanced file processing with async inflate
+async function processFileAsync(file, n) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const zipFormats = ['docx','pptx','hwpx','odt','xlsx'];
+  if (!zipFormats.includes(ext)) return; // handled by sync reader
+
+  const buffer = await file.arrayBuffer();
+  const zip = await unzipBufferAsync(buffer);
+
+  let content = '';
+  if (ext === 'docx') {
+    const docXml = zip['word/document.xml'];
+    if (docXml) {
+      const str = new TextDecoder('utf-8',{fatal:false}).decode(docXml);
+      const pMatches = str.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || [];
+      for (const p of pMatches) {
+        const tMatches = p.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g) || [];
+        const line = tMatches.map(t=>t.replace(/<[^>]+>/g,'')).join('');
+        if (line.trim()) content += line.trim() + '\n';
+      }
+    }
+  } else if (ext === 'pptx') {
+    const slideKeys = Object.keys(zip).filter(k=>k.match(/^ppt\/slides\/slide\d+\.xml$/)).sort();
+    for (const key of slideKeys) {
+      const str = new TextDecoder('utf-8',{fatal:false}).decode(zip[key]);
+      const tMatches = str.match(/<a:t>([\s\S]*?)<\/a:t>/g) || [];
+      const line = tMatches.map(t=>t.replace(/<[^>]+>/g,'')).join(' ');
+      if (line.trim()) content += line.trim() + '\n';
+    }
+  } else if (ext === 'hwpx') {
+    const bodyKeys = Object.keys(zip).filter(k=>k.includes('content') || k.includes('section'));
+    for (const key of bodyKeys) {
+      const str = new TextDecoder('utf-8',{fatal:false}).decode(zip[key]);
+      const tMatches = str.match(/<t[^>]*>([\s\S]*?)<\/t>/g) || [];
+      for (const t of tMatches) content += t.replace(/<[^>]+>/g,'') + '\n';
+    }
+  }
+
+  if (content.trim().length > 10) {
+    if (n===1) { text1=content.trim(); file1Loaded=true; }
+    else { text2=content.trim(); file2Loaded=true; }
+    document.getElementById('textInput'+n).value = content.trim();
+    document.getElementById('charCount'+n).textContent = content.trim().length.toLocaleString()+'자';
+    syncInputState();
+  }
+}
+
+// Override handleFileSelect to try async for zip formats
+const _origHandleFileSelect = handleFileSelect;
+function handleFileSelect(e, n) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (['docx','pptx','hwpx','odt'].includes(ext)) {
+    // Show file info immediately, then async
+    document.getElementById('fileInfo'+n).classList.add('visible');
+    document.getElementById('fileName'+n).textContent = file.name;
+    document.getElementById('fileSize'+n).textContent = formatSize(file.size);
+    showLoading('파일을 읽는 중...', 40);
+    processFileAsync(file, n).then(()=>hideLoading()).catch(()=>{
+      hideLoading(); processFile(file, n); // fallback to sync
+    });
+  } else {
+    processFile(file, n);
+  }
+}
+
+// ============================================================
+// Init
+// ============================================================
+document.querySelectorAll('.text-input').forEach((ta, i) => {
+  ta.addEventListener('input', () => {
+    const n = i+1;
+    if (n===1) { text1=ta.value; file1Loaded=false; }
+    else { text2=ta.value; file2Loaded=false; }
+  });
+});
+</script>
+</body>
+</html>
