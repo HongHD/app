@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>익일 용차 필요대수 산정 시스템</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #1a56db;
+    --primary-dark: #1345b7;
+    --primary-light: #e8f0fe;
+    --primary-mid: #3b82f6;
+    --accent: #0ea5e9;
+    --success: #059669;
+    --success-light: #ecfdf5;
+    --warning: #d97706;
+    --warning-light: #fffbeb;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-500: #64748b;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+    --font: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--gray-50);
+    color: var(--gray-800);
+    min-height: 100vh;
+  }
+
+  /* ─── Header ─── */
+  .app-header {
+    background: linear-gradient(135deg, #1a56db 0%, #1e3a8a 60%, #0f172a 100%);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(26,86,219,0.3);
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header-title {
+    color: #fff;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .header-sub {
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    margin-top: 1px;
+  }
+  .header-badge {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.85);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  /* ─── Main Layout ─── */
+  .main-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 28px 28px 60px;
+  }
+
+  /* ─── Upload Zone ─── */
+  .upload-section {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    border: 2px dashed var(--gray-200);
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .upload-section:hover, .upload-section.drag-over {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+  .upload-section input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .upload-icon {
+    width: 52px; height: 52px;
+    background: var(--primary-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 24px;
+  }
+  .upload-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 6px;
+  }
+  .upload-sub {
+    font-size: 13px;
+    color: var(--gray-400);
+  }
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 14px;
+    transition: background 0.2s;
+  }
+  .upload-btn:hover { background: var(--primary-dark); }
+
+  /* ─── Action Bar ─── */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .action-bar .title-area {
+    flex: 1;
+    min-width: 200px;
+  }
+  .page-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-900);
+    letter-spacing: -0.4px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--gray-400);
+    margin-top: 2px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1.5px solid transparent;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+  .btn-outline { background: #fff; color: var(--gray-700); border-color: var(--gray-200); }
+  .btn-outline:hover { border-color: var(--gray-300); background: var(--gray-50); }
+  .btn-danger { background: #fff; color: var(--danger); border-color: #fca5a5; }
+  .btn-danger:hover { background: var(--danger-light); }
+  .btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+  .btn-success:hover { background: #047857; }
+  .btn-icon { font-size: 16px; }
+
+  /* ─── Summary Cards ─── */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .summary-card {
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-100);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .summary-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--gray-400);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .summary-value {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--gray-900);
+  }
+  .summary-value.blue { color: var(--primary); }
+  .summary-value.green { color: var(--success); }
+  .summary-value.orange { color: var(--warning); }
+  .summary-sub {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-top: 4px;
+  }
+
+  /* ─── Table Section ─── */
+  .table-section {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-100);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .table-header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .table-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gray-900);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .table-badge {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .search-input {
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 7px 14px;
+    font-size: 13.5px;
+    color: var(--gray-700);
+    outline: none;
+    transition: border-color 0.2s;
+    width: 220px;
+    background: var(--gray-50);
+  }
+  .search-input:focus { border-color: var(--primary); background: #fff; }
+
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  thead th {
+    background: var(--gray-50);
+    color: var(--gray-500);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 10px 14px;
+    text-align: center;
+    border-bottom: 1px solid var(--gray-100);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  thead th.input-col { background: #eff6ff; color: var(--primary); }
+  thead th.output-col { background: #f0fdf4; color: var(--success); }
+  tbody tr {
+    transition: background 0.1s;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  tbody tr:hover { background: var(--gray-50); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody td {
+    padding: 10px 14px;
+    text-align: center;
+    color: var(--gray-700);
+    vertical-align: middle;
+  }
+  tbody td.site-name {
+    font-weight: 600;
+    color: var(--gray-900);
+    text-align: left;
+    white-space: nowrap;
+    min-width: 110px;
+  }
+  tbody td.num-col { font-variant-numeric: tabular-nums; }
+
+  /* editable input cells */
+  .cell-input {
+    background: transparent;
+    border: none;
+    text-align: center;
+    font-size: 13.5px;
+    color: var(--gray-800);
+    width: 100%;
+    min-width: 50px;
+    padding: 4px 2px;
+    border-radius: 4px;
+    transition: background 0.15s, border 0.15s;
+    font-family: var(--font);
+    outline: none;
+  }
+  .cell-input:focus {
+    background: var(--primary-light);
+    outline: none;
+    box-shadow: inset 0 0 0 1.5px var(--primary);
+  }
+  .cell-input.time-input { min-width: 64px; }
+
+  /* computed output cells */
+  td.computed {
+    background: #f8fffe;
+    color: #047857;
+    font-weight: 600;
+  }
+  td.computed-main {
+    background: #ecfdf5;
+    color: #065f46;
+    font-weight: 700;
+    font-size: 14.5px;
+  }
+
+  /* row number */
+  td.row-no {
+    color: var(--gray-400);
+    font-size: 12px;
+    font-weight: 500;
+    width: 36px;
+  }
+
+  /* Total row */
+  tr.total-row td {
+    background: var(--gray-50);
+    font-weight: 700;
+    color: var(--gray-800);
+    border-top: 2px solid var(--gray-200);
+  }
+
+  /* ─── Info Banner ─── */
+  .info-banner {
+    background: var(--primary-light);
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #1e40af;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    line-height: 1.6;
+  }
+  .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ─── Modal ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,0.55);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 1200px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .modal-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gray-900);
+  }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--gray-100);
+    color: var(--gray-500);
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .modal-close:hover { background: var(--gray-200); }
+  .modal-search {
+    padding: 14px 24px 10px;
+    border-bottom: 1px solid var(--gray-100);
+    flex-shrink: 0;
+  }
+  .modal-body {
+    overflow: auto;
+    flex: 1;
+    padding: 0;
+  }
+  .modal-table-wrap { overflow-x: auto; padding: 0; }
+  .modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .modal-table thead th {
+    background: var(--gray-50);
+    padding: 9px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray-500);
+    border-bottom: 1px solid var(--gray-100);
+    white-space: nowrap;
+    text-align: center;
+    position: sticky; top: 0;
+  }
+  .modal-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gray-100);
+    text-align: center;
+    white-space: nowrap;
+  }
+  .modal-table td.site { text-align: left; font-weight: 600; }
+  .modal-table tr:hover td { background: var(--gray-50); }
+  .modal-table tr.total-row td {
+    background: var(--gray-100);
+    font-weight: 700;
+    border-top: 2px solid var(--gray-300);
+  }
+  .cell-highlight { background: #dbeafe !important; color: #1e40af; font-weight: 700; }
+  .cell-max { background: #fef3c7 !important; color: #92400e; font-weight: 700; }
+
+  /* ─── Modal Tabs ─── */
+  .modal-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 24px 0;
+    border-bottom: 1px solid var(--gray-100);
+    flex-shrink: 0;
+  }
+  .modal-tab {
+    padding: 8px 18px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--gray-500);
+    transition: all 0.15s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .modal-tab:hover { color: var(--primary); }
+  .modal-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-light); }
+
+  /* ─── Toast ─── */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: var(--gray-900);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 320px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+
+  /* ─── Column legend ─── */
+  .col-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; color: var(--gray-500); }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 3px;
+  }
+  .legend-dot.input { background: #bfdbfe; }
+  .legend-dot.output { background: #a7f3d0; }
+
+  /* ─── Empty state ─── */
+  .empty-row td {
+    padding: 40px !important;
+    color: var(--gray-400) !important;
+    font-size: 14px !important;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .main-wrap { padding: 16px; }
+    .app-header { padding: 0 16px; }
+    .header-title { font-size: 15px; }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="app-header">
+  <div class="header-left">
+    <div class="header-logo">🚛</div>
+    <div>
+      <div class="header-title">익일 용차 필요대수 산정 시스템</div>
+      <div class="header-sub">동양그룹 레미콘 M/T차량 배차 계획</div>
+    </div>
+  </div>
+  <span class="header-badge">rev 5.2</span>
+</header>
+
+<!-- Main -->
+<div class="main-wrap">
+
+  <!-- Upload Zone -->
+  <div class="upload-section" id="uploadZone">
+    <input type="file" id="fileInput" accept=".xlsx,.xls" />
+    <div class="upload-icon">📂</div>
+    <div class="upload-title">엑셀 파일을 업로드하거나 드래그 & 드롭 하세요</div>
+    <div class="upload-sub">0211 시트 형식의 .xlsx / .xls 파일을 지원합니다</div>
+    <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+      <span>📁</span> 파일 선택
+    </button>
+    <div id="uploadFileName" style="margin-top:10px;font-size:13px;color:var(--gray-500);"></div>
+  </div>
+
+  <!-- Info Banner -->
+  <div class="info-banner">
+    <span class="info-icon">💡</span>
+    <div>
+      <strong>입력 안내:</strong> 파란색 헤더 컬럼(현장명, 출하량, 운행거리, 운행시간, 공장대기시간, 현장난이도, 펌프카대수, 배차간격, 첫차현장도착시간)을 입력하면
+      초록색 컬럼(필요대수, 첫차공장출하시간, 막차공장출하시간, 막차공장도착시간, 회전당운반량)이 자동 계산됩니다.
+      현장난이도 기본값 1(100%), 펌프카 없는 현장은 1 입력. 배차간격 0이면 6㎥ 이하 단건 출하로 처리됩니다.
+    </div>
+  </div>
+
+  <!-- Action Bar -->
+  <div class="action-bar">
+    <div class="title-area">
+      <div class="page-title">현장별 용차 필요대수</div>
+      <div class="page-subtitle" id="dateLabel">데이터를 입력하거나 파일을 업로드하세요</div>
+    </div>
+    <button class="btn btn-outline" onclick="openModal('hourly')">⏰ 시간대별 필요대수</button>
+    <button class="btn btn-outline" onclick="openModal('minute')">📊 분단위별 필요대수</button>
+    <button class="btn btn-danger" onclick="resetAll()">🗑 초기화</button>
+    <button class="btn btn-success" onclick="downloadExcel()">⬇ 엑셀 다운로드</button>
+  </div>
+
+  <!-- Column Legend -->
+  <div class="col-legend">
+    <div class="legend-item"><div class="legend-dot input"></div> 직접 입력 필드</div>
+    <div class="legend-item"><div class="legend-dot output"></div> 자동 계산 필드</div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="summary-label">총 출하량</div>
+      <div class="summary-value blue" id="totalVolume">0</div>
+      <div class="summary-sub">㎥</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">현장 수</div>
+      <div class="summary-value" id="siteCount">0</div>
+      <div class="summary-sub">개 현장</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">총 필요대수</div>
+      <div class="summary-value green" id="totalRequired">0</div>
+      <div class="summary-sub">대 (현장별 합산)</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">피크 필요대수</div>
+      <div class="summary-value orange" id="peakRequired">0</div>
+      <div class="summary-sub">대 (상위2시간 평균)</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">자차 가동대수</div>
+      <div class="summary-value" id="ownCarsInput" style="font-size:18px;padding-top:6px;">
+        <input type="number" id="ownCarsVal" value="58" min="0"
+          style="width:60px;font-size:22px;font-weight:700;border:none;border-bottom:2px solid var(--primary);outline:none;color:var(--gray-900);background:transparent;text-align:center;"
+          onchange="updateSummary()">
+      </div>
+      <div class="summary-sub">대 (직접 변경 가능)</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">용차 필요대수</div>
+      <div class="summary-value orange" id="charterRequired">0</div>
+      <div class="summary-sub">대 = 피크 - 자차</div>
+    </div>
+  </div>
+
+  <!-- Main Table -->
+  <div class="table-section">
+    <div class="table-header">
+      <div class="table-title">
+        현장별 입력 및 계산
+        <span class="table-badge" id="rowCountBadge">0행</span>
+      </div>
+      <input type="text" class="search-input" id="mainSearch" placeholder="🔍 현장명 검색..." oninput="filterTable()">
+    </div>
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th class="input-col">현장명</th>
+            <th class="input-col">출하량<br>(㎥)</th>
+            <th class="input-col">운행거리<br>(왕복km)</th>
+            <th class="input-col">운행시간<br>(1회전,분)</th>
+            <th class="input-col">공장대기<br>(분)</th>
+            <th class="input-col">현장<br>난이도</th>
+            <th class="input-col">펌프카<br>대수</th>
+            <th class="input-col">배차<br>간격(분)</th>
+            <th class="input-col">첫차현장<br>도착시간</th>
+            <th class="output-col">필요대수<br>(현장별)</th>
+            <th class="output-col">첫차공장<br>출하시간</th>
+            <th class="output-col">막차공장<br>출하시간</th>
+            <th class="output-col">막차공장<br>도착시간</th>
+            <th class="output-col">회전당<br>운반량</th>
+          </tr>
+        </thead>
+        <tbody id="mainTbody">
+          <tr class="empty-row"><td colspan="15">⬆ 파일을 업로드하거나 아래 버튼으로 행을 추가하세요</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid var(--gray-100);display:flex;gap:10px;align-items:center;">
+      <button class="btn btn-outline" onclick="addRow()">＋ 행 추가</button>
+      <span style="font-size:12px;color:var(--gray-400);margin-left:8px;">최대 30개 현장까지 입력 가능</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════ 시간대별 필요대수 Modal ═══════════ -->
+<div class="modal-overlay" id="hourlyModal">
+  <div class="modal" style="max-width:1100px;">
+    <div class="modal-header">
+      <div class="modal-title">⏰ 시간대별 필요대수</div>
+      <button class="modal-close" onclick="closeModal('hourlyModal')">✕</button>
+    </div>
+    <div class="modal-search">
+      <input type="text" class="search-input" id="hourlySearch" placeholder="🔍 현장명 검색..."
+        oninput="filterHourlyTable()" style="width:240px;">
+    </div>
+    <div class="modal-body">
+      <div class="modal-table-wrap">
+        <table class="modal-table" id="hourlyTable">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>현장명</th>
+              <th>운행시간<br>(분)</th>
+              <th>공장대기<br>(분)</th>
+              <th>펌프카</th>
+              <th>배차<br>간격</th>
+              <th>첫차공장<br>출하</th>
+              <th>막차공장<br>도착</th>
+              <th>6~7시</th>
+              <th>7~8시</th>
+              <th>8~9시</th>
+              <th>9~10시</th>
+              <th>10~11시</th>
+              <th>11~12시</th>
+              <th>12~13시</th>
+              <th>13~14시</th>
+              <th>14~15시</th>
+              <th>15~16시</th>
+              <th>16~17시</th>
+              <th>17~18시</th>
+              <th>18~19시</th>
+              <th>19~20시</th>
+            </tr>
+          </thead>
+          <tbody id="hourlyTbody">
+            <tr><td colspan="22" style="padding:30px;color:var(--gray-400);">현장 데이터를 입력하면 자동 계산됩니다</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ 분단위별 필요대수 Modal ═══════════ -->
+<div class="modal-overlay" id="minuteModal">
+  <div class="modal" style="max-width:1200px;">
+    <div class="modal-header">
+      <div class="modal-title">📊 분단위별 필요대수</div>
+      <button class="modal-close" onclick="closeModal('minuteModal')">✕</button>
+    </div>
+    <div class="modal-search" style="display:flex;gap:12px;align-items:center;">
+      <input type="text" class="search-input" id="minuteSearch" placeholder="🔍 현장명 검색..."
+        oninput="filterMinuteTable()" style="width:220px;">
+      <span style="font-size:12.5px;color:var(--gray-400);">시간 범위:</span>
+      <select id="minuteFrom" style="border:1.5px solid var(--gray-200);border-radius:var(--radius);padding:6px 10px;font-size:13px;outline:none;" onchange="renderMinuteTable()">
+        <option value="6">06:00</option><option value="7">07:00</option><option value="8" selected>08:00</option>
+        <option value="9">09:00</option><option value="10">10:00</option>
+      </select>
+      <span style="color:var(--gray-400);">~</span>
+      <select id="minuteTo" style="border:1.5px solid var(--gray-200);border-radius:var(--radius);padding:6px 10px;font-size:13px;outline:none;" onchange="renderMinuteTable()">
+        <option value="14">14:00</option><option value="15">15:00</option><option value="16" selected>16:00</option>
+        <option value="17">17:00</option><option value="18">18:00</option><option value="20">20:00</option>
+      </select>
+    </div>
+    <div class="modal-body">
+      <div class="modal-table-wrap">
+        <table class="modal-table" id="minuteTable">
+          <thead id="minuteTableHead"></thead>
+          <tbody id="minuteTbody">
+            <tr><td colspan="20" style="padding:30px;color:var(--gray-400);">현장 데이터를 입력하면 자동 계산됩니다</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const VOLUME_PER_TRIP = 5.8;
+const MAX_ROWS = 30;
+
+let siteData = [];
+let hourlyData = [];
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+/* ─── Time helpers ─── */
+function parseTimeStr(str) {
+  if (!str || str === '' || str === '0') return null;
+  str = String(str).trim();
+  if (str.includes(':')) {
+    const [h, m] = str.split(':').map(Number);
+    return (h * 60 + m) / (24 * 60);
+  }
+  const f = parseFloat(str);
+  if (isNaN(f)) return null;
+  if (f > 1) return f / (24 * 60); // 분 단위인 경우
+  return f;
+}
+
+function formatTime(frac) {
+  if (frac === null || frac === undefined || isNaN(frac) || frac === 0) return '-';
+  const totalMins = Math.round(frac * 24 * 60);
+  const h = Math.floor(totalMins / 60) % 24;
+  const m = totalMins % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+function fracToMins(frac) {
+  return frac * 24 * 60;
+}
+function minsToFrac(mins) {
+  return mins / (24 * 60);
+}
+
+/* ─── Core Formula Engine ─── */
+function calcRow(r) {
+  const vol = parseFloat(r.volume) || 0;
+  const travelTime = parseFloat(r.travelTime) || 0;
+  const waitTime = parseFloat(r.waitTime) || 0;
+  const difficulty = parseFloat(r.difficulty) || 1;
+  const pumps = parseFloat(r.pumps) || 1;
+  const interval = parseFloat(r.interval) || 0;
+  const arrivalFrac = parseTimeStr(r.firstArrival);
+
+  const perTrip = VOLUME_PER_TRIP;
+  r.perTrip = perTrip;
+
+  if (!arrivalFrac) {
+    r.required = 0; r.firstDepart = null; r.lastDepart = null; r.lastArrive = null;
+    return;
+  }
+
+  // 필요대수 계산
+  // =IFERROR(IF((F+G)*H*I/J <= D/P, ROUNDUP((F+G)*H*I/J,0), ROUND(D/P,0)), 0)
+  let required = 0;
+  if (interval > 0 && pumps > 0) {
+    const cycleLoad = (travelTime + waitTime) * difficulty * pumps / interval;
+    const volLoad = vol / perTrip;
+    if (cycleLoad <= volLoad) {
+      required = Math.ceil(cycleLoad);
+    } else {
+      required = Math.round(volLoad);
+    }
+  } else if (interval === 0 && vol > 0) {
+    // 6㎥ 이하 단건: 1대
+    required = 1;
+  }
+  r.required = required;
+
+  // 첫차 공장 출하시간 = 첫차현장도착 - 운행시간/2
+  // =IFERROR(M16 - TIME(M16, F16/2, ), )
+  const firstDepartMins = fracToMins(arrivalFrac) - travelTime / 2;
+  r.firstDepart = minsToFrac(firstDepartMins);
+
+  // 막차 공장 출하시간 = 첫차출하 + TIME(L, (ROUNDUP(D/P,0)-1)/I*J, )
+  // 즉, 첫차출하시간 + (총 회전수-1)/펌프카 * 배차간격 (분)
+  if (interval > 0 && pumps > 0) {
+    const totalTrips = Math.ceil(vol / perTrip);
+    const lastDepartMins = firstDepartMins + ((totalTrips - 1) / pumps) * interval;
+    r.lastDepart = minsToFrac(lastDepartMins);
+
+    // 막차 공장 도착시간 = 막차출하 + 운행시간
+    const lastArriveMins = lastDepartMins + travelTime;
+    r.lastArrive = minsToFrac(lastArriveMins);
+  } else {
+    r.lastDepart = r.firstDepart;
+    r.lastArrive = minsToFrac(firstDepartMins + travelTime);
+  }
+}
+
+/* ─── Hourly demand calculation ─── */
+function calcHourly(r) {
+  const hours = [];
+  for (let h = 6; h < 20; h++) {
+    const startFrac = h / 24;
+    const endFrac = (h + 1) / 24;
+    const count = countCarsInHour(r, startFrac, endFrac);
+    hours.push(count);
+  }
+  return hours;
+}
+
+function countCarsInHour(r, hourStart, hourEnd) {
+  if (!r.firstDepart || !r.required || r.required === 0) return 0;
+  const travelTime = parseFloat(r.travelTime) || 0;
+  const interval = parseFloat(r.interval) || 0;
+  const pumps = parseFloat(r.pumps) || 1;
+  const vol = parseFloat(r.volume) || 0;
+
+  let count = 0;
+  const totalTrips = Math.ceil(vol / VOLUME_PER_TRIP);
+
+  if (interval === 0) {
+    // 단건: 단 1대, 첫차 운행 중인지 확인
+    const departFrac = r.firstDepart;
+    const arriveFrac = departFrac + minsToFrac(travelTime);
+    if (departFrac < hourEnd && arriveFrac > hourStart) count = 1;
+    return count;
+  }
+
+  // 각 차량의 운행 일정 계산
+  // trip i (0-based)의 출발: firstDepart + floor(i/pumps)*interval/1440
+  const carStates = new Set(); // 해당 시간에 운행 중인 차량 수 (max = required)
+  const intervalFrac = minsToFrac(interval);
+  const travelFrac = minsToFrac(travelTime);
+
+  // 각 출발 배차별로 해당 시간에 운행 중인지 체크
+  for (let trip = 0; trip < totalTrips; trip++) {
+    const batchDepart = r.firstDepart + Math.floor(trip / pumps) * intervalFrac;
+    // 이 배차 시간에 현장에 있는 시간 = depart + travel/2 ~ depart + travel
+    // 공장 → 현장: depart ~ depart + travel/2
+    // 현장 → 공장: depart + travel/2 ~ depart + travel
+    // 총 운행: depart ~ depart + travel
+    const tripEnd = batchDepart + travelFrac;
+    if (batchDepart < hourEnd && tripEnd > hourStart) {
+      carStates.add(trip);
+    }
+  }
+  return Math.min(carStates.size, r.required);
+}
+
+/* ─── Minute-level demand ─── */
+function getMinuteData(r, timeStepMins = 4) {
+  if (!r.firstDepart || !r.required || r.required === 0) return {};
+  const result = {};
+  const totalTrips = Math.ceil((parseFloat(r.volume) || 0) / VOLUME_PER_TRIP);
+  const travelTime = parseFloat(r.travelTime) || 0;
+  const interval = parseFloat(r.interval) || 0;
+  const pumps = parseFloat(r.pumps) || 1;
+
+  if (interval === 0) {
+    const t = Math.round(fracToMins(r.firstDepart));
+    const end = t + travelTime;
+    for (let m = t; m < end; m += timeStepMins) result[m] = 1;
+    return result;
+  }
+
+  const intervalMins = interval;
+  const firstMins = fracToMins(r.firstDepart);
+
+  for (let trip = 0; trip < totalTrips; trip++) {
+    const departMins = firstMins + Math.floor(trip / pumps) * intervalMins;
+    const endMins = departMins + travelTime;
+    for (let m = Math.round(departMins); m < Math.round(endMins); m += timeStepMins) {
+      result[m] = (result[m] || 0) + 1;
+    }
+  }
+  // Cap at required
+  Object.keys(result).forEach(k => {
+    result[k] = Math.min(result[k], r.required);
+  });
+  return result;
+}
+
+/* ─── Render Main Table ─── */
+function renderMainTable() {
+  const tbody = document.getElementById('mainTbody');
+  const search = document.getElementById('mainSearch').value.toLowerCase();
+  tbody.innerHTML = '';
+
+  if (siteData.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="15">⬆ 파일을 업로드하거나 행 추가 버튼을 클릭하세요</td></tr>';
+    return;
+  }
+
+  siteData.forEach((r, i) => {
+    const visible = !search || (r.name || '').toLowerCase().includes(search);
+    const tr = document.createElement('tr');
+    tr.dataset.idx = i;
+    tr.style.display = visible ? '' : 'none';
+
+    tr.innerHTML = `
+      <td class="row-no">
+        ${i+1}
+        <button class="del-btn" onclick="deleteRow(${i})" title="행 삭제">✕</button>
+      </td>
+      <td class="site-name"><input class="cell-input" value="${esc(r.name||'')}" placeholder="현장명" oninput="updateField(${i},'name',this.value)" style="min-width:90px;text-align:left;"></td>
+      <td><input class="cell-input" type="number" value="${r.volume||''}" placeholder="0" min="0" oninput="updateField(${i},'volume',this.value)"></td>
+      <td><input class="cell-input" type="number" value="${r.distance||''}" placeholder="0" min="0" oninput="updateField(${i},'distance',this.value)"></td>
+      <td><input class="cell-input" type="number" value="${r.travelTime||''}" placeholder="0" min="0" oninput="updateField(${i},'travelTime',this.value)"></td>
+      <td><input class="cell-input" type="number" value="${r.waitTime||''}" placeholder="5" min="0" oninput="updateField(${i},'waitTime',this.value)"></td>
+      <td><input class="cell-input" type="number" value="${r.difficulty!==undefined?r.difficulty:1}" step="0.01" min="0.8" max="1.2" placeholder="1" oninput="updateField(${i},'difficulty',this.value)"></td>
+      <td><input class="cell-input" type="number" value="${r.pumps||1}" min="1" placeholder="1" oninput="updateField(${i},'pumps',this.value)"></td>
+      <td><input class="cell-input" type="number" value="${r.interval||''}" placeholder="0" min="0" step="0.5" oninput="updateField(${i},'interval',this.value)"></td>
+      <td><input class="cell-input time-input" value="${r.firstArrival||''}" placeholder="8:00" oninput="updateField(${i},'firstArrival',this.value)"></td>
+      <td class="computed-main num-col">${r.required !== undefined && r.required > 0 ? r.required : '-'}</td>
+      <td class="computed num-col">${formatTime(r.firstDepart)}</td>
+      <td class="computed num-col">${formatTime(r.lastDepart)}</td>
+      <td class="computed num-col">${formatTime(r.lastArrive)}</td>
+      <td class="computed num-col">${VOLUME_PER_TRIP}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Total row
+  const totalVol = siteData.reduce((s,r) => s + (parseFloat(r.volume)||0), 0);
+  const totalReq = siteData.reduce((s,r) => s + (r.required||0), 0);
+  const tr = document.createElement('tr');
+  tr.className = 'total-row';
+  tr.innerHTML = `<td colspan="2" style="text-align:left;padding-left:14px;">합계</td>
+    <td>${totalVol.toLocaleString()}</td>
+    <td colspan="7"></td>
+    <td class="computed-main">${totalReq}</td>
+    <td colspan="4"></td>`;
+  tbody.appendChild(tr);
+
+  updateSummary();
+  updateBadge();
+}
+
+function esc(s) {
+  return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function updateField(idx, field, value) {
+  // 1. 데이터 저장 및 계산
+  siteData[idx][field] = value;
+  calcRow(siteData[idx]);
+
+  // 2. 해당 행의 계산 결과 셀만 갱신 (DOM 전체 재생성 없이)
+  const tr = document.querySelector('#mainTbody tr[data-idx="' + idx + '"]');
+  if (tr) {
+    const r = siteData[idx];
+    const tds = tr.querySelectorAll('td');
+    tds[10].textContent = (r.required !== undefined && r.required > 0) ? r.required : '-';
+    tds[11].textContent = formatTime(r.firstDepart);
+    tds[12].textContent = formatTime(r.lastDepart);
+    tds[13].textContent = formatTime(r.lastArrive);
+    tds[14].textContent = VOLUME_PER_TRIP;
+  }
+
+  // 3. 합계 행 합산 업데이트
+  const totalVol = siteData.reduce((s, r) => s + (parseFloat(r.volume) || 0), 0);
+  const totalReq = siteData.reduce((s, r) => s + (r.required || 0), 0);
+  const totalTr = document.querySelector('#mainTbody tr.total-row');
+  if (totalTr) {
+    const ttds = totalTr.querySelectorAll('td');
+    // total-row: td[0]=합계(colspan2), td[1]=출하량, td[2]=빈칸(colspan7), td[3]=필요대수합계
+    if (ttds[1]) ttds[1].textContent = totalVol.toLocaleString();
+    if (ttds[3]) ttds[3].textContent = totalReq;
+  }
+  updateSummary();
+  updateBadge();
+}
+
+function filterTable() {
+  const search = document.getElementById('mainSearch').value.toLowerCase().trim();
+  document.querySelectorAll('#mainTbody tr[data-idx]').forEach(tr => {
+    const idx = parseInt(tr.dataset.idx);
+    const name = (siteData[idx]?.name || '').toLowerCase();
+    tr.style.display = (!search || name.includes(search)) ? '' : 'none';
+  });
+  // total row always visible
+  const totalRow = document.querySelector('#mainTbody tr.total-row');
+  if (totalRow) totalRow.style.display = '';
+}
+
+function addRow() {
+  if (siteData.length >= MAX_ROWS) { showToast('최대 30개 현장까지 입력 가능합니다', 'error'); return; }
+  siteData.push({ name:'', volume:'', distance:'', travelTime:'', waitTime:'5', difficulty:1, pumps:1, interval:'', firstArrival:'' });
+  renderMainTable();
+  updateBadge();
+}
+
+function updateBadge() {
+  const count = siteData.filter(r => r.name || r.volume).length;
+  document.getElementById('rowCountBadge').textContent = `${count}행`;
+}
+
+function updateSummary() {
+  const active = siteData.filter(r => r.required > 0);
+  document.getElementById('totalVolume').textContent = siteData.reduce((s,r)=>s+(parseFloat(r.volume)||0),0).toLocaleString();
+  document.getElementById('siteCount').textContent = active.length;
+  document.getElementById('totalRequired').textContent = siteData.reduce((s,r)=>s+(r.required||0),0);
+
+  // 피크 필요대수 = 시간대별 필요대수 상위 2시간 평균
+  const hourlyTotals = calcHourlyTotals();
+  const sorted = [...hourlyTotals].sort((a,b)=>b-a);
+  const top2avg = sorted.length >= 2 ? Math.round((sorted[0]+sorted[1])/2) : (sorted[0]||0);
+  document.getElementById('peakRequired').textContent = top2avg;
+
+  const own = parseInt(document.getElementById('ownCarsVal').value) || 0;
+  const charter = Math.max(0, top2avg - own);
+  document.getElementById('charterRequired').textContent = charter;
+}
+
+function calcHourlyTotals() {
+  const totals = new Array(14).fill(0); // 6~20시
+  siteData.forEach(r => {
+    if (!r.required || r.required === 0) return;
+    const h = calcHourly(r);
+    h.forEach((v, i) => { totals[i] += v; });
+  });
+  return totals;
+}
+
+function recalcAll() {
+  siteData.forEach(r => calcRow(r));
+}
+
+/* ─── File Upload ─── */
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  loadExcelFile(file);
+});
+
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadExcelFile(file);
+});
+
+function loadExcelFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array', cellDates: true });
+
+      // Find the 0211-like sheet
+      let sheetName = wb.SheetNames.find(n => n.match(/\d{4}/) || n === '0211') || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Find header row (contains "현장명")
+      let headerRow = -1;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].some(c => String(c).includes('현장명'))) { headerRow = i; break; }
+      }
+      if (headerRow < 0) { showToast('올바른 형식의 파일이 아닙니다 (현장명 컬럼 없음)', 'error'); return; }
+
+      const header = rows[headerRow];
+      const colIdx = {};
+      const colMap = {
+        name: ['현장명'], volume: ['출하량'], distance: ['운행거리','왕복'],
+        travelTime: ['운행시간','1회전'], waitTime: ['공장대기'], difficulty: ['현장난이도'],
+        pumps: ['펌프카'], interval: ['배차간격'], firstArrival: ['첫차현장','도착']
+      };
+      Object.entries(colMap).forEach(([key, keywords]) => {
+        const idx = header.findIndex(h => keywords.some(k => String(h).includes(k)));
+        if (idx >= 0) colIdx[key] = idx;
+      });
+
+      // ── 시트 범위를 직접 읽어 누락 없이 파싱 ──
+      // 셀을 raw로 읽어 병합셀·공백행 모두 처리
+      const wsRef = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : null;
+      const merges = ws['!merges'] || [];
+
+      // 병합셀 값 보정 맵 생성 (병합된 셀은 첫 번째 셀 값을 공유)
+      const mergeMap = {};
+      merges.forEach(m => {
+        const baseAddr = XLSX.utils.encode_cell({r: m.s.r, c: m.s.c});
+        const baseCell = ws[baseAddr];
+        const baseVal  = baseCell ? (baseCell.v !== undefined ? baseCell.v : '') : '';
+        for (let mr = m.s.r; mr <= m.e.r; mr++) {
+          for (let mc = m.s.c; mc <= m.e.c; mc++) {
+            if (mr === m.s.r && mc === m.s.c) continue;
+            mergeMap[XLSX.utils.encode_cell({r:mr, c:mc})] = baseVal;
+          }
+        }
+      });
+
+      // 셀 값 가져오기 (병합셀 보정 포함)
+      function getCellVal(r, c) {
+        const addr = XLSX.utils.encode_cell({r, c});
+        if (mergeMap[addr] !== undefined) return mergeMap[addr];
+        const cell = ws[addr];
+        if (!cell) return '';
+        if (cell.t === 'n') return cell.v;          // 숫자 그대로
+        if (cell.t === 'd') return cell.v;          // Date 그대로
+        return cell.v !== undefined ? String(cell.v) : '';
+      }
+
+      // 헤더 행의 컬럼 인덱스 재매핑 (rows 배열 대신 직접 셀 접근)
+      const colIdxDirect = {};
+      if (wsRef) {
+        for (let c = wsRef.s.c; c <= wsRef.e.c; c++) {
+          const hv = String(getCellVal(headerRow, c)).replace(/\s/g,'');
+          const colMap2 = {
+            name:         ['현장명'],
+            volume:       ['출하량'],
+            distance:     ['운행거리','왕복'],
+            travelTime:   ['운행시간','1회전'],
+            waitTime:     ['공장대기'],
+            difficulty:   ['현장난이도'],
+            pumps:        ['펌프카'],
+            interval:     ['배차간격'],
+            firstArrival: ['첫차현장','도착']
+          };
+          Object.entries(colMap2).forEach(([key, kws]) => {
+            if (colIdxDirect[key] !== undefined) return;
+            if (kws.some(k => hv.includes(k))) colIdxDirect[key] = c;
+          });
+        }
+        // fallback: 기존 rows 기반 colIdx 사용
+        Object.entries(colIdx).forEach(([key, ci]) => {
+          if (colIdxDirect[key] === undefined) colIdxDirect[key] = ci;
+        });
+      } else {
+        Object.assign(colIdxDirect, colIdx);
+      }
+
+      // 시간 파싱 헬퍼
+      function parseTimeVal(raw) {
+        if (!raw && raw !== 0) return '';
+        if (raw instanceof Date) {
+          return `${raw.getHours()}:${String(raw.getMinutes()).padStart(2,'0')}`;
+        }
+        if (typeof raw === 'number' && raw >= 0 && raw < 1) {
+          const mins = Math.round(raw * 24 * 60);
+          return `${Math.floor(mins/60)}:${String(mins%60).padStart(2,'0')}`;
+        }
+        const s = String(raw).trim();
+        // "HH:MM" 형태
+        if (/^\d{1,2}:\d{2}/.test(s)) return s;
+        // 순수 숫자 (분 단위일 수 있음)
+        const n = parseFloat(s);
+        if (!isNaN(n) && n >= 1) {
+          const h = Math.floor(n / 60), m = Math.round(n % 60);
+          return `${h}:${String(m).padStart(2,'0')}`;
+        }
+        return s;
+      }
+
+      // 스킵 판단: 합계/소계 행, 완전 빈 행
+      function isSkipRow(rowIdx) {
+        const nameVal = String(getCellVal(rowIdx, colIdxDirect.name ?? colIdx.name ?? 0)).trim();
+        const volVal  = getCellVal(rowIdx, colIdxDirect.volume ?? colIdx.volume ?? 1);
+        // 완전 빈 행 (현장명도 없고 출하량도 없음)
+        if (!nameVal && (volVal === '' || volVal === 0 || volVal === null)) return true;
+        // 합계/소계 행
+        const SKIP_WORDS = ['합계','소계','계','합 계','소 계','total','Total'];
+        if (SKIP_WORDS.some(w => nameVal === w || nameVal.replace(/\s/g,'') === w.replace(/\s/g,''))) return true;
+        return false;
+      }
+
+      siteData = [];
+      const maxRow = wsRef ? wsRef.e.r : rows.length - 1;
+      for (let ri = headerRow + 1; ri <= maxRow; ri++) {
+        if (isSkipRow(ri)) continue;
+
+        const nameRaw = getCellVal(ri, colIdxDirect.name  ?? 0);
+        const volRaw  = getCellVal(ri, colIdxDirect.volume ?? 1);
+        const name    = String(nameRaw).trim();
+        const vol     = parseFloat(volRaw);
+
+        // 현장명도 없고 출하량도 없으면 스킵 (이중 방지)
+        if (!name && (isNaN(vol) || vol === 0)) continue;
+
+        const r = {
+          name,
+          volume:       isNaN(vol) ? 0 : vol,
+          distance:     parseFloat(getCellVal(ri, colIdxDirect.distance    ?? -1)) || 0,
+          travelTime:   parseFloat(getCellVal(ri, colIdxDirect.travelTime  ?? -1)) || 0,
+          waitTime:     parseFloat(getCellVal(ri, colIdxDirect.waitTime    ?? -1)) || 5,
+          difficulty:   parseFloat(getCellVal(ri, colIdxDirect.difficulty  ?? -1)) || 1,
+          pumps:        parseFloat(getCellVal(ri, colIdxDirect.pumps       ?? -1)) || 1,
+          interval:     parseFloat(getCellVal(ri, colIdxDirect.interval    ?? -1)) || 0,
+          firstArrival: parseTimeVal(getCellVal(ri, colIdxDirect.firstArrival ?? -1))
+        };
+        calcRow(r);
+        siteData.push(r);
+        if (siteData.length >= MAX_ROWS) break;
+      }
+
+      document.getElementById('uploadFileName').textContent = `✅ ${file.name} (${sheetName} 시트 로드, ${siteData.length}개 현장)`;
+      document.getElementById('dateLabel').textContent = `파일: ${file.name} | 시트: ${sheetName} | ${siteData.length}개 현장`;
+      renderMainTable();
+      showToast(`${siteData.length}개 현장 데이터를 불러왔습니다`, 'success');
+    } catch(err) {
+      showToast('파일 파싱 오류: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ─── Reset ─── */
+function resetAll() {
+  if (!confirm('모든 데이터를 초기화하시겠습니까?')) return;
+  siteData = [];
+  document.getElementById('fileInput').value = '';
+  document.getElementById('uploadFileName').textContent = '';
+  document.getElementById('mainSearch').value = '';
+  document.getElementById('dateLabel').textContent = '데이터를 입력하거나 파일을 업로드하세요';
+  renderMainTable();
+  showToast('데이터가 초기화되었습니다');
+}
+
+/* ─── Download Excel ─── */
+function downloadExcel() {
+  if (siteData.length === 0) { showToast('다운로드할 데이터가 없습니다', 'error'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const ROW_HEIGHT = 26;
+
+  // ── 공통 스타일 상수 ──
+  const BDR = {
+    top:    { style:'thin', color:{rgb:'000000'} },
+    bottom: { style:'thin', color:{rgb:'000000'} },
+    left:   { style:'thin', color:{rgb:'000000'} },
+    right:  { style:'thin', color:{rgb:'000000'} }
+  };
+  // 헤더 하단만 medium으로 강조
+  const BDR_HDR = {
+    top:    { style:'medium', color:{rgb:'000000'} },
+    bottom: { style:'medium', color:{rgb:'000000'} },
+    left:   { style:'thin',   color:{rgb:'000000'} },
+    right:  { style:'thin',   color:{rgb:'000000'} }
+  };
+
+  // 정렬: 수평·수직 모두 가운데
+  const ALIGN = { horizontal:'center', vertical:'center', wrapText:false };
+
+  // 폰트
+  const FNT      = { name:'Malgun Gothic', sz:10 };
+  const FNT_BOLD = { name:'Malgun Gothic', sz:10, bold:true };
+
+  // 1행 헤더 배경: 옅은 연두색
+  const FILL_HDR  = { patternType:'solid', fgColor:{ rgb:'D6F5D6' } };
+  // 합계·소계 행 배경
+  const FILL_SUM  = { patternType:'solid', fgColor:{ rgb:'F0F0F0' } };
+  // 용차 필요대수 행
+  const FILL_CHRT = { patternType:'solid', fgColor:{ rgb:'FFF9E6' } };
+  // 피크 행
+  const FILL_PEAK = { patternType:'solid', fgColor:{ rgb:'FDEDEC' } };
+
+  // ── 셀 생성 헬퍼 ──
+  function mkCell(v, font, fill, brd) {
+    const t = typeof v === 'number' ? 'n' : 's';
+    return { v, t, s: { font: font||FNT, fill: fill||{patternType:'none'}, alignment: ALIGN, border: brd||BDR } };
+  }
+
+  // ── 컬럼명 길이 기준 너비 계산 (헤더 텍스트만 기준) ──
+  function hdrColWidths(headers) {
+    return headers.map(h => {
+      // 한글 1자 ≈ 2 wch, 영숫자 1자 ≈ 1 wch
+      let w = 0;
+      for (const ch of String(h)) { w += ch.charCodeAt(0) > 127 ? 2 : 1; }
+      return { wch: Math.max(w + 2, 6) }; // 최소 6, 여백 2 추가
+    });
+  }
+
+  // ── 시트 빌더 ──
+  function buildSheet(rows) {
+    const ws = {};
+    let maxC = 0;
+    rows.forEach((row, ri) => {
+      row.forEach((c, ci) => {
+        ws[XLSX.utils.encode_cell({r:ri, c:ci})] = c;
+        if (ci > maxC) maxC = ci;
+      });
+    });
+    ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:rows.length-1, c:maxC}});
+    return ws;
+  }
+
+  // ══════════════════════════════════════════
+  // Sheet 1: 현장별 산정
+  // ══════════════════════════════════════════
+  const HDR1 = [
+    'No','현장명','출하량(㎥)','운행거리(왕복)','운행시간(1회전)',
+    '공장대기시간','현장난이도','펌프카대수','배차간격','첫차현장도착시간',
+    '필요대수(현장별)','첫차공장출하시간','막차공장출하시간','막차공장도착시간','회전당운반량'
+  ];
+
+  const ws1Rows = [];
+
+  // 1행: 헤더 (옅은 연두색, 볼드, 가운데 정렬)
+  ws1Rows.push(HDR1.map(h => mkCell(h, FNT_BOLD, FILL_HDR, BDR_HDR)));
+
+  // 2행~: 데이터 (가운데 정렬, 세로 중간)
+  siteData.forEach((r, i) => {
+    ws1Rows.push([
+      i+1,
+      r.name||'',
+      typeof r.volume    === 'string' ? (parseFloat(r.volume)||0)    : (r.volume||0),
+      typeof r.distance  === 'string' ? (parseFloat(r.distance)||0)  : (r.distance||0),
+      typeof r.travelTime=== 'string' ? (parseFloat(r.travelTime)||0): (r.travelTime||0),
+      typeof r.waitTime  === 'string' ? (parseFloat(r.waitTime)||0)  : (r.waitTime||0),
+      typeof r.difficulty=== 'string' ? (parseFloat(r.difficulty)||1): (r.difficulty||1),
+      typeof r.pumps     === 'string' ? (parseFloat(r.pumps)||1)     : (r.pumps||1),
+      typeof r.interval  === 'string' ? (parseFloat(r.interval)||0)  : (r.interval||0),
+      r.firstArrival||'',
+      r.required||0,
+      formatTime(r.firstDepart),
+      formatTime(r.lastDepart),
+      formatTime(r.lastArrive),
+      VOLUME_PER_TRIP
+    ].map(v => mkCell(v, FNT, null, BDR)));
+  });
+
+  // 합계 행
+  const totalVol1 = siteData.reduce((s,r)=>s+(parseFloat(r.volume)||0), 0);
+  const totalReq1 = siteData.reduce((s,r)=>s+(r.required||0), 0);
+  ws1Rows.push(HDR1.map((_, ci) => {
+    const v = ci===1 ? '합  계' : ci===2 ? totalVol1 : ci===10 ? totalReq1 : '';
+    return mkCell(v, FNT_BOLD, FILL_SUM, BDR);
+  }));
+
+  const ws1 = buildSheet(ws1Rows);
+  ws1['!cols'] = hdrColWidths(HDR1);
+  ws1['!rows'] = ws1Rows.map(() => ({ hpt: ROW_HEIGHT }));
+  XLSX.utils.book_append_sheet(wb, ws1, '현장별산정');
+
+  // ══════════════════════════════════════════
+  // Sheet 2: 시간대별 필요대수
+  // ══════════════════════════════════════════
+  const HOUR_LABELS = [
+    '6~7시','7~8시','8~9시','9~10시','10~11시','11~12시','12~13시',
+    '13~14시','14~15시','15~16시','16~17시','17~18시','18~19시','19~20시'
+  ];
+  const HDR2 = [
+    'No','현장명','운행시간(분)','공장대기(분)','펌프카','배차간격',
+    '첫차공장출하','막차공장도착', ...HOUR_LABELS
+  ];
+
+  const ws2Rows = [];
+
+  // 1행: 헤더 (옅은 연두색)
+  ws2Rows.push(HDR2.map(h => mkCell(h, FNT_BOLD, FILL_HDR, BDR_HDR)));
+
+  // 데이터 행
+  siteData.forEach((r, i) => {
+    const hArr = calcHourly(r);
+    ws2Rows.push([
+      i+1, r.name||'',
+      parseFloat(r.travelTime)||0, parseFloat(r.waitTime)||0,
+      parseFloat(r.pumps)||1, parseFloat(r.interval)||0,
+      formatTime(r.firstDepart), formatTime(r.lastArrive),
+      ...hArr
+    ].map(v => mkCell(v, FNT, null, BDR)));
+  });
+
+  // 집계 행들
+  const totals2 = calcHourlyTotals();
+  const own2    = parseInt(document.getElementById('ownCarsVal').value)||58;
+
+  const makeAggRow = (label, vals, fill, font) => {
+    return HDR2.map((_, ci) => {
+      const v = ci===1 ? label : ci>=8 ? (vals[ci-8]??'') : '';
+      return mkCell(v, font||FNT_BOLD, fill||FILL_SUM, BDR);
+    });
+  };
+
+  ws2Rows.push(makeAggRow('총 필요차량수',                totals2,                        FILL_SUM,  FNT_BOLD));
+  ws2Rows.push(makeAggRow('자차 가동대수',                totals2.map(()=>own2),          FILL_SUM,  FNT));
+  ws2Rows.push(makeAggRow('용차 필요대수',                totals2.map(t=>Math.max(0,t-own2)), FILL_CHRT, FNT_BOLD));
+
+  // 피크 행 (상위 2시간 평균)
+  const sorted2  = [...totals2].sort((a,b)=>b-a);
+  const top2avg2 = sorted2.length>=2 ? Math.round((sorted2[0]+sorted2[1])/2) : (sorted2[0]||0);
+  ws2Rows.push(HDR2.map((_, ci) => {
+    const v = ci===1 ? '필요차량수 (상위2시간 평균)' : ci===8 ? top2avg2 : '';
+    return mkCell(v, {name:'Malgun Gothic',sz:10,bold:true,color:{rgb:'B03A2E'}}, FILL_PEAK, BDR_HDR);
+  }));
+
+  const ws2 = buildSheet(ws2Rows);
+  ws2['!cols'] = hdrColWidths(HDR2);
+  ws2['!rows'] = ws2Rows.map(() => ({ hpt: ROW_HEIGHT }));
+  XLSX.utils.book_append_sheet(wb, ws2, '시간대별필요대수');
+
+  // ── 저장 ──
+  const today   = new Date();
+  const dateStr = `${today.getMonth()+1}${String(today.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb, `익일용차대수산정_${dateStr}.xlsx`, { bookType:'xlsx', cellStyles:true });
+  showToast('엑셀 파일이 다운로드되었습니다 ✅', 'success');
+}
+
+/* ─── Hourly Modal ─── */
+function openModal(type) {
+  if (siteData.filter(r=>r.required>0).length === 0) {
+    showToast('계산할 현장 데이터가 없습니다', 'error'); return;
+  }
+  if (type === 'hourly') {
+    renderHourlyTable();
+    document.getElementById('hourlyModal').classList.add('active');
+  } else {
+    renderMinuteTable();
+    document.getElementById('minuteModal').classList.add('active');
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+document.getElementById('hourlyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal('hourlyModal');
+});
+document.getElementById('minuteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal('minuteModal');
+});
+
+const HOUR_LABELS = ['6~7시','7~8시','8~9시','9~10시','10~11시','11~12시','12~13시','13~14시','14~15시','15~16시','16~17시','17~18시','18~19시','19~20시'];
+
+function renderHourlyTable() {
+  const search = document.getElementById('hourlySearch').value.toLowerCase();
+  const tbody = document.getElementById('hourlyTbody');
+  tbody.innerHTML = '';
+  const totals = new Array(14).fill(0);
+  let visibleCount = 0;
+
+  siteData.forEach((r, i) => {
+    if (!r.name && !r.volume) return;
+    const visible = !search || r.name.toLowerCase().includes(search);
+    const h = calcHourly(r);
+    h.forEach((v, j) => totals[j] += v);
+
+    const tr = document.createElement('tr');
+    tr.style.display = visible ? '' : 'none';
+    if (visible) visibleCount++;
+    const maxH = Math.max(...h);
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td class="site">${r.name||'-'}</td>
+      <td>${r.travelTime||0}</td>
+      <td>${r.waitTime||0}</td>
+      <td>${r.pumps||1}</td>
+      <td>${r.interval||0}</td>
+      <td>${formatTime(r.firstDepart)}</td>
+      <td>${formatTime(r.lastArrive)}</td>
+      ${h.map(v => `<td class="${v>0&&v===maxH?'cell-max':v>0?'cell-highlight':''}">${v||''}</td>`).join('')}
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // 합계 row
+  const own = parseInt(document.getElementById('ownCarsVal').value)||58;
+  const sortedTotals = [...totals].sort((a,b)=>b-a);
+  const top2avg = sortedTotals.length >= 2 ? Math.round((sortedTotals[0]+sortedTotals[1])/2) : 0;
+  const maxTotal = Math.max(...totals);
+
+  const addSumRow = (label, vals, style='') => {
+    const tr = document.createElement('tr');
+    tr.className = 'total-row';
+    tr.innerHTML = `<td></td><td class="site" style="${style}">${label}</td><td colspan="6"></td>
+      ${vals.map((v,i) => `<td style="${style}${totals[i]===maxTotal&&label==='총 필요차량수'?'background:#fef3c7;color:#92400e;':''}${v<0?'color:var(--danger);':''}">${v||0}</td>`).join('')}`;
+    tbody.appendChild(tr);
+  };
+  addSumRow('총 필요차량수', totals, 'font-weight:700;');
+  addSumRow('자차 가동대수', totals.map(()=>own), 'color:var(--gray-600);');
+  addSumRow('용차 필요대수', totals.map(t=>Math.max(0,t-own)), 'color:var(--primary);font-weight:700;');
+
+  const trPeak = document.createElement('tr');
+  trPeak.className = 'total-row';
+  trPeak.innerHTML = `<td colspan="8" style="text-align:right;font-size:12px;color:var(--gray-500);">필요차량수 (상위 2시간 평균)</td>
+    <td colspan="14" style="font-size:15px;font-weight:700;color:var(--primary);">${top2avg}대</td>`;
+  tbody.appendChild(trPeak);
+}
+
+function filterHourlyTable() { renderHourlyTable(); }
+
+/* ─── Minute Modal ─── */
+function renderMinuteTable() {
+  const fromH = parseInt(document.getElementById('minuteFrom').value) || 8;
+  const toH = parseInt(document.getElementById('minuteTo').value) || 16;
+  const STEP = 4; // 4분 단위
+
+  // Build time slots
+  const slots = [];
+  for (let m = fromH * 60; m < toH * 60; m += STEP) slots.push(m);
+
+  // Header
+  const thead = document.getElementById('minuteTableHead');
+  thead.innerHTML = `<tr>
+    <th>No</th><th>현장명</th><th>운행시간</th><th>배차간격</th><th>첫차출하</th><th>막차도착</th>
+    ${slots.map(m => {
+      const h = Math.floor(m/60); const min = m%60;
+      return `<th style="${min===0?'border-left:2px solid var(--gray-300);':''}">${h}:${String(min).padStart(2,'0')}</th>`;
+    }).join('')}
+  </tr>`;
+
+  const search = document.getElementById('minuteSearch').value.toLowerCase();
+  const tbody = document.getElementById('minuteTbody');
+  tbody.innerHTML = '';
+  const totals = {};
+  slots.forEach(m => totals[m] = 0);
+
+  siteData.forEach((r, i) => {
+    if (!r.required || r.required === 0) return;
+    const visible = !search || r.name.toLowerCase().includes(search);
+    const minuteMap = getMinuteData(r, STEP);
+    slots.forEach(m => { totals[m] += (minuteMap[m] || 0); });
+
+    const tr = document.createElement('tr');
+    tr.style.display = visible ? '' : 'none';
+    const maxV = Math.max(...slots.map(m => minuteMap[m]||0));
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td class="site">${r.name||'-'}</td>
+      <td>${r.travelTime||0}</td>
+      <td>${r.interval||0}</td>
+      <td>${formatTime(r.firstDepart)}</td>
+      <td>${formatTime(r.lastArrive)}</td>
+      ${slots.map(m => {
+        const v = minuteMap[m] || 0;
+        const cls = v > 0 && v === maxV ? 'cell-max' : v > 0 ? 'cell-highlight' : '';
+        const border = m % 60 === 0 ? 'border-left:2px solid var(--gray-200);' : '';
+        return `<td class="${cls}" style="${border}">${v||''}</td>`;
+      }).join('')}
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Total row
+  const maxT = Math.max(...Object.values(totals));
+  const tr = document.createElement('tr');
+  tr.className = 'total-row';
+  tr.innerHTML = `<td colspan="6" style="text-align:right;font-weight:700;">총 필요차량수</td>
+    ${slots.map(m => {
+      const v = totals[m]||0;
+      const cls = v === maxT && v > 0 ? 'cell-max' : '';
+      const border = m % 60 === 0 ? 'border-left:2px solid var(--gray-300);' : '';
+      return `<td class="${cls}" style="${border};font-weight:700;">${v||''}</td>`;
+    }).join('')}`;
+  tbody.appendChild(tr);
+}
+
+function filterMinuteTable() { renderMinuteTable(); }
+
+/* ─── Init ─── */
+renderMainTable();
+</script>
+</body>
+</html>
