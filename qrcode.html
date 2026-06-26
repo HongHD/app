@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR 코드 생성기</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f6fa;
+      --surface: #ffffff;
+      --surface2: #f0f2f7;
+      --border: rgba(0,0,0,0.10);
+      --border-md: rgba(0,0,0,0.18);
+      --text-primary: #1a1d2e;
+      --text-secondary: #5a6075;
+      --text-tertiary: #9aa0b8;
+      --blue: #185FA5;
+      --blue-dark: #0C447C;
+      --blue-light: #E6F1FB;
+      --blue-text: #185FA5;
+      --radius-md: 8px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --shadow-sm: 0 1px 4px rgba(0,0,0,0.07);
+      --shadow-md: 0 4px 20px rgba(0,0,0,0.09);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #13151f;
+        --surface: #1e2130;
+        --surface2: #252839;
+        --border: rgba(255,255,255,0.08);
+        --border-md: rgba(255,255,255,0.14);
+        --text-primary: #e8eaf2;
+        --text-secondary: #8e94b0;
+        --text-tertiary: #5a6075;
+        --blue: #378ADD;
+        --blue-dark: #185FA5;
+        --blue-light: rgba(55,138,221,0.15);
+        --blue-text: #85B7EB;
+        --shadow-sm: 0 1px 4px rgba(0,0,0,0.3);
+        --shadow-md: 0 4px 20px rgba(0,0,0,0.4);
+      }
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .page-header {
+      background: var(--surface);
+      border-bottom: 0.5px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .page-header .logo-icon {
+      width: 40px; height: 40px;
+      background: var(--blue);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 22px;
+    }
+    .page-header h1 { font-size: 20px; font-weight: 600; color: var(--text-primary); }
+    .page-header p  { font-size: 13px; color: var(--text-secondary); margin-top: 1px; }
+
+    .container {
+      max-width: 860px;
+      margin: 2rem auto;
+      padding: 0 1.5rem 3rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.4rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .card-full { grid-column: 1 / -1; }
+
+    .field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 5px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .badge-req { background: var(--blue-light); color: var(--blue-text); }
+    .badge-opt { background: var(--surface2); color: var(--text-tertiary); }
+
+    .url-input {
+      width: 100%;
+      font-size: 15px;
+      padding: 10px 14px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .url-input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(24,95,165,0.12);
+    }
+    .url-input::placeholder { color: var(--text-tertiary); }
+    .err-msg {
+      font-size: 12px;
+      color: #A32D2D;
+      margin-top: 5px;
+      display: none;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .upload-zone {
+      border: 1.5px dashed var(--border-md);
+      border-radius: var(--radius-md);
+      padding: 1.1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .upload-zone:hover { border-color: var(--blue); background: var(--blue-light); }
+    .upload-zone input {
+      position: absolute; inset: 0; opacity: 0;
+      cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-zone i { font-size: 28px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+    .upload-zone span { font-size: 13px; color: var(--text-secondary); }
+
+    .logo-preview {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: var(--surface2);
+      border-radius: var(--radius-md);
+    }
+    .logo-preview img { width: 34px; height: 34px; object-fit: contain; border-radius: 5px; }
+    .logo-preview .logo-fname { font-size: 13px; color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .logo-remove { background: none; border: none; cursor: pointer; color: var(--text-tertiary); font-size: 18px; display: flex; align-items: center; transition: color .12s; }
+    .logo-remove:hover { color: #A32D2D; }
+
+    .color-section { display: flex; flex-direction: column; gap: 14px; }
+    .color-row { display: flex; align-items: center; gap: 10px; }
+    .color-row label { font-size: 13px; color: var(--text-secondary); flex: 1; }
+    .color-picker-wrap { display: flex; align-items: center; gap: 7px; }
+    .color-swatch {
+      width: 30px; height: 30px;
+      border-radius: 7px;
+      border: 1px solid var(--border-md);
+      cursor: pointer; overflow: hidden; position: relative;
+    }
+    .color-swatch input[type=color] { position: absolute; inset: -4px; opacity: 0; cursor: pointer; width: calc(100%+8px); height: calc(100%+8px); }
+    .swatch-preview { width: 100%; height: 100%; }
+    .hex-val { font-size: 12px; font-family: 'Consolas', monospace; color: var(--text-secondary); min-width: 56px; }
+    .reset-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-tertiary); font-size: 14px;
+      padding: 2px 5px; border-radius: 4px;
+      transition: color .12s, background .12s;
+    }
+    .reset-btn:hover { color: var(--text-secondary); background: var(--surface2); }
+
+    .preset-label { font-size: 12px; color: var(--text-tertiary); margin-bottom: 7px; }
+    .preset-colors { display: flex; gap: 7px; flex-wrap: wrap; }
+    .preset-dot {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform .12s, border-color .12s;
+    }
+    .preset-dot:hover, .preset-dot.active { transform: scale(1.18); border-color: var(--blue); }
+
+    .size-row { display: flex; align-items: center; gap: 10px; }
+    .size-row label { font-size: 13px; color: var(--text-secondary); flex: 1; }
+    .size-select {
+      font-size: 13px; padding: 6px 10px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--text-primary);
+      cursor: pointer; outline: none;
+    }
+    .size-select:focus { border-color: var(--blue); }
+
+    .gen-btn {
+      width: 100%; padding: 13px;
+      border-radius: var(--radius-md);
+      border: none;
+      background: var(--blue);
+      color: #fff;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background .15s, transform .1s, box-shadow .15s;
+      box-shadow: 0 2px 10px rgba(24,95,165,0.25);
+    }
+    .gen-btn:hover:not(:disabled) { background: var(--blue-dark); box-shadow: 0 4px 16px rgba(24,95,165,0.35); }
+    .gen-btn:active:not(:disabled) { transform: scale(0.98); }
+    .gen-btn:disabled {
+      background: var(--surface2);
+      color: var(--text-tertiary);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .qr-result { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+    .qr-canvas-wrap {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      border: 0.5px solid var(--border);
+      box-shadow: var(--shadow-md);
+    }
+
+    .qr-url-label {
+      font-size: 12px; color: var(--text-secondary);
+      text-align: center; max-width: 360px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .qr-actions { display: flex; gap: 10px; width: 100%; }
+    .action-btn {
+      flex: 1; padding: 9px 12px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--text-primary);
+      font-size: 13px; font-weight: 500;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: background .12s, border-color .12s;
+    }
+    .action-btn:hover { background: var(--surface2); border-color: var(--blue); color: var(--blue); }
+    .action-btn i { font-size: 16px; }
+
+    .empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; padding: 2.5rem 1rem;
+      color: var(--text-tertiary); text-align: center;
+      min-height: 200px;
+    }
+    .empty-state i { font-size: 48px; opacity: .3; }
+    .empty-state p { font-size: 13px; }
+
+    .divider { height: 0.5px; background: var(--border); margin: 10px 0; }
+
+    @media (max-width: 600px) {
+      .container { grid-template-columns: 1fr; }
+      .card-full { grid-column: 1; }
+      .page-header { padding: .8rem 1rem; }
+      .container { margin: 1rem auto; padding: 0 1rem 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="logo-icon"><i class="ti ti-qrcode"></i></div>
+  <div>
+    <h1>QR 코드 생성기</h1>
+    <p>URL을 입력하고 로고와 색상을 설정하여 QR 코드를 만드세요.</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- URL 입력 -->
+  <div class="card card-full">
+    <div class="field-label">URL 주소 <span class="badge badge-req">필수</span></div>
+    <input class="url-input" type="url" id="urlInput" placeholder="https://example.com" autocomplete="off" />
+    <div class="err-msg" id="urlErr">
+      <i class="ti ti-alert-circle" style="font-size:14px"></i> 올바른 URL 주소를 입력해주세요. (http:// 또는 https:// 포함)
+    </div>
+  </div>
+
+  <!-- 로고 업로드 -->
+  <div class="card">
+    <div class="field-label">회사 로고 <span class="badge badge-opt">옵션</span></div>
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="logoFile" accept="image/*" aria-label="로고 이미지 업로드" />
+      <i class="ti ti-photo-up"></i>
+      <span>클릭하거나 이미지를 드래그하세요<br><span style="font-size:11px;color:var(--text-tertiary)">PNG · JPG · SVG · WEBP</span></span>
+    </div>
+    <div class="logo-preview" id="logoPreview">
+      <img id="logoThumb" src="" alt="로고 미리보기" />
+      <span class="logo-fname" id="logoName"></span>
+      <button class="logo-remove" id="logoRemove" aria-label="로고 삭제"><i class="ti ti-x"></i></button>
+    </div>
+  </div>
+
+  <!-- 색상 및 크기 설정 -->
+  <div class="card">
+    <div class="field-label">색상 &amp; 크기 설정 <span class="badge badge-opt">옵션</span></div>
+    <div class="color-section">
+
+      <div class="color-row">
+        <label>전경색 (QR 패턴)</label>
+        <div class="color-picker-wrap">
+          <div class="color-swatch">
+            <input type="color" id="fgColor" value="#000000" aria-label="전경색 선택" />
+            <div class="swatch-preview" id="fgPreview" style="background:#000"></div>
+          </div>
+          <span class="hex-val" id="fgHex">#000000</span>
+          <button class="reset-btn" id="fgReset" title="기본값으로 초기화">↺</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="preset-label">프리셋 색상</div>
+        <div class="preset-colors" id="presetColors"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="color-row">
+        <label>배경색</label>
+        <div class="color-picker-wrap">
+          <div class="color-swatch">
+            <input type="color" id="bgColor" value="#ffffff" aria-label="배경색 선택" />
+            <div class="swatch-preview" id="bgPreview" style="background:#fff;border:0.5px solid #ddd"></div>
+          </div>
+          <span class="hex-val" id="bgHex">#ffffff</span>
+          <button class="reset-btn" id="bgReset" title="기본값으로 초기화">↺</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="size-row">
+        <label>QR 코드 크기</label>
+        <select class="size-select" id="qrSize">
+          <option value="200">소형 (200 px)</option>
+          <option value="280" selected>중형 (280 px)</option>
+          <option value="400">대형 (400 px)</option>
+          <option value="600">초대형 (600 px)</option>
+        </select>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 생성 버튼 -->
+  <div class="card card-full" style="padding:1rem 1.4rem">
+    <button class="gen-btn" id="genBtn" disabled>
+      <i class="ti ti-qrcode"></i> QR 코드 생성하기
+    </button>
+  </div>
+
+  <!-- 결과 영역 -->
+  <div class="card card-full" id="resultCard">
+    <div class="qr-result" id="qrResult">
+      <div class="empty-state">
+        <i class="ti ti-qrcode"></i>
+        <p>URL을 입력하고 생성 버튼을 눌러주세요.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  const urlInput   = $('urlInput');
+  const urlErr     = $('urlErr');
+  const logoFile   = $('logoFile');
+  const logoPreview= $('logoPreview');
+  const logoThumb  = $('logoThumb');
+  const logoName   = $('logoName');
+  const logoRemove = $('logoRemove');
+  const dropZone   = $('dropZone');
+  const fgColorIn  = $('fgColor');
+  const bgColorIn  = $('bgColor');
+  const fgPreview  = $('fgPreview');
+  const bgPreview  = $('bgPreview');
+  const fgHex      = $('fgHex');
+  const bgHex      = $('bgHex');
+  const genBtn     = $('genBtn');
+  const qrResult   = $('qrResult');
+  const qrSizeSelect = $('qrSize');
+
+  let logoDataUrl = null;
+
+  /* ── 프리셋 컬러 ── */
+  const PRESETS = [
+    '#000000','#185FA5','#0F6E56','#993C1D',
+    '#534AB7','#993556','#BA7517','#3B6D11',
+    '#444441','#A32D2D'
+  ];
+  const presetWrap = $('presetColors');
+  PRESETS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'preset-dot' + (c === '#000000' ? ' active' : '');
+    d.style.background = c;
+    d.title = c;
+    d.addEventListener('click', () => {
+      fgColorIn.value = c;
+      syncFg();
+      presetWrap.querySelectorAll('.preset-dot').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+    });
+    presetWrap.appendChild(d);
+  });
+
+  /* ── 색상 동기화 ── */
+  function syncFg() {
+    const v = fgColorIn.value;
+    fgPreview.style.background = v;
+    fgHex.textContent = v.toUpperCase();
+  }
+  function syncBg() {
+    const v = bgColorIn.value;
+    bgPreview.style.background = v;
+    bgPreview.style.border = v.toLowerCase() === '#ffffff' ? '0.5px solid #ddd' : 'none';
+    bgHex.textContent = v.toUpperCase();
+  }
+
+  fgColorIn.addEventListener('input', () => {
+    syncFg();
+    presetWrap.querySelectorAll('.preset-dot').forEach(x => x.classList.remove('active'));
+  });
+  bgColorIn.addEventListener('input', syncBg);
+  $('fgReset').addEventListener('click', () => { fgColorIn.value = '#000000'; syncFg(); presetWrap.querySelector('.preset-dot').classList.add('active'); });
+  $('bgReset').addEventListener('click', () => { bgColorIn.value = '#ffffff'; syncBg(); });
+
+  syncFg(); syncBg();
+
+  /* ── URL 검증 ── */
+  function isValidUrl(s) {
+    if (!s) return false;
+    try {
+      const u = new URL(s);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch { return false; }
+  }
+
+  urlInput.addEventListener('input', () => {
+    const v = urlInput.value.trim();
+    const ok = isValidUrl(v);
+    urlErr.style.display = (v && !ok) ? 'flex' : 'none';
+    genBtn.disabled = !ok;
+  });
+
+  /* ── 로고 처리 ── */
+  function handleLogoFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      logoDataUrl = e.target.result;
+      logoThumb.src = logoDataUrl;
+      logoName.textContent = file.name.length > 24 ? file.name.slice(0, 22) + '…' : file.name;
+      logoPreview.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  logoFile.addEventListener('change', () => handleLogoFile(logoFile.files[0]));
+  logoRemove.addEventListener('click', () => {
+    logoDataUrl = null;
+    logoPreview.style.display = 'none';
+    logoThumb.src = '';
+    logoFile.value = '';
+  });
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.style.borderColor = '#185FA5'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = '';
+    const f = e.dataTransfer.files[0];
+    if (f) handleLogoFile(f);
+  });
+
+  /* ── QR 생성 ── */
+  genBtn.addEventListener('click', generateQR);
+
+  function generateQR() {
+    const url  = urlInput.value.trim();
+    if (!isValidUrl(url)) return;
+
+    const size = parseInt(qrSizeSelect.value, 10);
+    const fg   = fgColorIn.value;
+    const bg   = bgColorIn.value;
+
+    qrResult.innerHTML = `
+      <div class="empty-state">
+        <i class="ti ti-loader-2" style="font-size:40px;opacity:.5;animation:spin 1s linear infinite"></i>
+        <p>QR 코드를 생성 중입니다...</p>
+      </div>`;
+
+    const style = document.createElement('style');
+    style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(style);
+
+    const tmpDiv = document.createElement('div');
+    tmpDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden';
+    document.body.appendChild(tmpDiv);
+
+    try {
+      new QRCode(tmpDiv, {
+        text: url,
+        width: size,
+        height: size,
+        colorDark: fg,
+        colorLight: bg,
+        correctLevel: logoDataUrl ? QRCode.CorrectLevel.H : QRCode.CorrectLevel.M
+      });
+
+      setTimeout(() => {
+        const srcCanvas = tmpDiv.querySelector('canvas');
+        if (!srcCanvas) { cleanup(tmpDiv); showError(); return; }
+
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width  = size;
+        finalCanvas.height = size;
+        const ctx = finalCanvas.getContext('2d');
+        ctx.drawImage(srcCanvas, 0, 0);
+        cleanup(tmpDiv);
+
+        if (logoDataUrl) {
+          const img = new Image();
+          img.onload = () => {
+            const logoSize = Math.round(size * 0.21);
+            const lx = Math.round((size - logoSize) / 2);
+            const ly = Math.round((size - logoSize) / 2);
+            const pad = Math.round(size * 0.03);
+            const rr  = Math.round(size * 0.02);
+            ctx.fillStyle = bg;
+            ctx.beginPath();
+            const bx = lx - pad, by = ly - pad;
+            const bw = logoSize + pad * 2, bh = logoSize + pad * 2;
+            ctx.moveTo(bx + rr, by);
+            ctx.lineTo(bx + bw - rr, by);
+            ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + rr);
+            ctx.lineTo(bx + bw, by + bh - rr);
+            ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - rr, by + bh);
+            ctx.lineTo(bx + rr, by + bh);
+            ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - rr);
+            ctx.lineTo(bx, by + rr);
+            ctx.quadraticCurveTo(bx, by, bx + rr, by);
+            ctx.closePath();
+            ctx.fill();
+            ctx.drawImage(img, lx, ly, logoSize, logoSize);
+            renderResult(finalCanvas, url);
+          };
+          img.onerror = () => renderResult(finalCanvas, url);
+          img.src = logoDataUrl;
+        } else {
+          renderResult(finalCanvas, url);
+        }
+      }, 120);
+
+    } catch (e) {
+      cleanup(tmpDiv);
+      showError();
+    }
+  }
+
+  function cleanup(el) {
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function showError() {
+    qrResult.innerHTML = `
+      <div class="empty-state">
+        <i class="ti ti-alert-circle" style="font-size:40px;color:#A32D2D;opacity:1"></i>
+        <p style="color:#A32D2D">QR 코드 생성에 실패했습니다.<br>URL을 확인하고 다시 시도해주세요.</p>
+      </div>`;
+  }
+
+  function renderResult(canvas, url) {
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-result';
+
+    const cWrap = document.createElement('div');
+    cWrap.className = 'qr-canvas-wrap';
+    cWrap.appendChild(canvas);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'qr-url-label';
+    lbl.textContent = url;
+
+    const actions = document.createElement('div');
+    actions.className = 'qr-actions';
+
+    /* PNG 다운로드 */
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'action-btn';
+    dlBtn.innerHTML = '<i class="ti ti-download"></i> PNG 다운로드';
+    dlBtn.addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = 'qrcode.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    });
+
+    /* SVG 다운로드 (canvas → blob) */
+    const svgBtn = document.createElement('button');
+    svgBtn.className = 'action-btn';
+    svgBtn.innerHTML = '<i class="ti ti-file-download"></i> 클립보드 복사';
+    svgBtn.addEventListener('click', () => {
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        try {
+          navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+            .then(() => {
+              svgBtn.innerHTML = '<i class="ti ti-check"></i> 복사 완료!';
+              setTimeout(() => { svgBtn.innerHTML = '<i class="ti ti-file-download"></i> 클립보드 복사'; }, 2200);
+            })
+            .catch(() => {
+              svgBtn.innerHTML = '<i class="ti ti-x"></i> 복사 실패';
+              setTimeout(() => { svgBtn.innerHTML = '<i class="ti ti-file-download"></i> 클립보드 복사'; }, 2000);
+            });
+        } catch (e) {
+          svgBtn.textContent = '브라우저 미지원';
+        }
+      });
+    });
+
+    actions.appendChild(dlBtn);
+    actions.appendChild(svgBtn);
+    wrap.appendChild(cWrap);
+    wrap.appendChild(lbl);
+    wrap.appendChild(actions);
+
+    qrResult.innerHTML = '';
+    qrResult.appendChild(wrap);
+  }
+
+})();
+</script>
+</body>
+</html>
