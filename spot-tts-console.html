@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net data:; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark">
+<title>스팟 방송 콘솔 · SPOT BROADCAST CONSOLE</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+
+<style>
+/* ─────────────────────────────────────────────
+   SPOT BROADCAST CONSOLE — design tokens
+   ───────────────────────────────────────────── */
+:root{
+  --ink:#060A14;
+  --navy-900:#0A1224;
+  --navy-800:#101B33;
+  --navy-700:#16243F;
+  --navy-600:#1D2F51;
+  --line:#25395F;
+  --line-soft:#1A2B49;
+  --text:#E9EFFA;
+  --text-dim:#A9BAD9;
+  --muted:#7186AB;
+  --amber:#F0B341;
+  --amber-dim:#8A6825;
+  --onair:#FF4B4B;
+  --ready:#3FC9A8;
+  --radius:14px;
+  --radius-sm:9px;
+  --shadow:0 18px 44px rgba(0,0,0,.45);
+  --font-ui:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,"Noto Sans KR",sans-serif;
+  --font-label:"Barlow Condensed","Pretendard Variable",Pretendard,"Malgun Gothic",sans-serif;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(1100px 620px at 12% -10%, #16294D 0%, transparent 62%),
+    radial-gradient(900px 520px at 100% 0%, #12203C 0%, transparent 58%),
+    var(--ink);
+  color:var(--text);
+  font-family:var(--font-ui);
+  font-size:15px;
+  line-height:1.62;
+  -webkit-text-size-adjust:100%;
+  -webkit-font-smoothing:antialiased;
+  word-break:keep-all;
+  overflow-wrap:break-word;
+}
+
+/* ── Console rail (signature): thin amber tick strip down the page top ── */
+.rail{
+  height:4px;
+  background:repeating-linear-gradient(90deg,var(--amber) 0 2px,transparent 2px 12px);
+  opacity:.55;
+}
+
+.wrap{max-width:1180px;margin:0 auto;padding:22px 18px 96px;}
+
+/* ── Masthead ── */
+.masthead{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;margin-bottom:22px;
+}
+.brand{display:flex;align-items:center;gap:13px;min-width:0;}
+.brand-mark{
+  width:42px;height:42px;flex:0 0 42px;border-radius:11px;
+  background:linear-gradient(160deg,var(--navy-600),var(--navy-800));
+  border:1px solid var(--line);
+  display:grid;place-items:center;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+}
+.brand-mark span{
+  font-family:var(--font-label);font-weight:700;font-size:19px;
+  letter-spacing:.06em;color:var(--amber);
+}
+.brand-text h1{
+  margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.25;
+}
+.brand-text p{
+  margin:2px 0 0;font-family:var(--font-label);font-size:12.5px;
+  letter-spacing:.19em;text-transform:uppercase;color:var(--muted);
+}
+
+/* ── ON AIR lamp ── */
+.lamp{
+  display:flex;align-items:center;gap:11px;
+  padding:9px 16px 9px 13px;border-radius:999px;
+  background:var(--navy-800);border:1px solid var(--line);
+}
+.lamp-dot{
+  width:11px;height:11px;border-radius:50%;
+  background:#33405C;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+  transition:background .18s ease,box-shadow .18s ease;
+}
+.lamp-text{
+  font-family:var(--font-label);font-size:14px;font-weight:600;
+  letter-spacing:.2em;color:var(--muted);
+}
+body.is-ready .lamp-dot{background:var(--ready);box-shadow:0 0 12px rgba(63,201,168,.6);}
+body.is-ready .lamp-text{color:var(--text-dim);}
+body.is-live .lamp{border-color:#5E2230;background:#22101A;}
+body.is-live .lamp-dot{background:var(--onair);box-shadow:0 0 16px rgba(255,75,75,.85);animation:pulse 1.35s ease-in-out infinite;}
+body.is-live .lamp-text{color:#FF8C8C;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.42;}}
+
+/* ── Panels ── */
+.grid{display:grid;grid-template-columns:1fr;gap:18px;}
+@media (min-width:960px){
+  .grid{grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);align-items:start;}
+  .grid .span-2{grid-column:1 / -1;}
+}
+.panel{
+  background:linear-gradient(180deg,rgba(22,36,63,.92),rgba(13,22,40,.92));
+  border:1px solid var(--line-soft);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:20px;
+}
+.panel + .panel{margin-top:0;}
+.panel-head{
+  display:flex;align-items:baseline;gap:10px;
+  padding-bottom:13px;margin-bottom:17px;border-bottom:1px solid var(--line-soft);
+}
+.panel-head h2{
+  margin:0;font-family:var(--font-label);font-size:15px;font-weight:600;
+  letter-spacing:.17em;text-transform:uppercase;color:var(--amber);
+}
+.panel-head small{
+  font-size:12.5px;color:var(--muted);letter-spacing:0;font-family:var(--font-ui);
+}
+
+/* ── Drop zone ── */
+.drop{
+  border:1px dashed var(--line);border-radius:var(--radius-sm);
+  padding:24px 18px;text-align:center;background:rgba(9,15,28,.5);
+  transition:border-color .16s ease,background .16s ease;
+  cursor:pointer;
+}
+.drop:hover,.drop.is-over{border-color:var(--amber);background:rgba(240,179,65,.06);}
+.drop:focus-visible{outline:2px solid var(--amber);outline-offset:3px;}
+.drop-title{font-weight:600;margin:0 0 5px;}
+.drop-sub{margin:0;font-size:13px;color:var(--muted);}
+.drop input[type=file]{display:none;}
+
+.filebar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:14px;font-size:13.5px;color:var(--text-dim);
+}
+.chip{
+  font-family:var(--font-label);font-size:13px;letter-spacing:.09em;
+  padding:4px 10px;border-radius:6px;background:var(--navy-700);
+  border:1px solid var(--line);color:var(--text-dim);white-space:nowrap;
+}
+.chip.on{background:rgba(240,179,65,.13);border-color:var(--amber-dim);color:var(--amber);}
+.chip.off{opacity:.4;text-decoration:line-through;}
+
+/* ── Form controls ── */
+.field{margin-bottom:15px;}
+.field:last-child{margin-bottom:0;}
+label.lb{
+  display:block;margin-bottom:7px;
+  font-family:var(--font-label);font-size:13px;font-weight:600;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
+}
+input[type=text],select,textarea{
+  width:100%;padding:12px 13px;
+  background:#0A1120;border:1px solid var(--line);border-radius:var(--radius-sm);
+  color:var(--text);font-family:var(--font-ui);font-size:15px;line-height:1.5;
+  transition:border-color .15s ease,box-shadow .15s ease;
+  -webkit-appearance:none;appearance:none;
+}
+select{
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 19px) 51%,calc(100% - 13px) 51%;
+  background-size:6px 6px,6px 6px;background-repeat:no-repeat;
+  padding-right:38px;
+}
+input[type=text]:focus,select:focus,textarea:focus{
+  outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(240,179,65,.14);
+}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media (max-width:520px){.row2{grid-template-columns:1fr;}}
+
+.slider-row{display:flex;align-items:center;gap:12px;}
+.slider-row input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:3px;
+  background:var(--line);outline:none;margin:0;
+}
+.slider-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--amber);border:3px solid #0A1120;cursor:pointer;
+  box-shadow:0 0 0 1px var(--amber-dim);
+}
+.slider-row input[type=range]::-moz-range-thumb{
+  width:16px;height:16px;border-radius:50%;background:var(--amber);
+  border:3px solid #0A1120;cursor:pointer;
+}
+.slider-row input[type=range]:focus-visible{box-shadow:0 0 0 3px rgba(240,179,65,.2);}
+.slider-val{
+  font-family:var(--font-label);font-size:15px;font-weight:600;
+  color:var(--amber);min-width:52px;text-align:right;font-variant-numeric:tabular-nums;
+}
+
+.check{display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:13.5px;color:var(--text-dim);}
+.check input{
+  width:18px;height:18px;margin:2px 0 0;accent-color:var(--amber);flex:0 0 18px;cursor:pointer;
+}
+
+/* ── Script viewer ── */
+.script{
+  background:#080E1B;border:1px solid var(--line-soft);border-radius:var(--radius-sm);
+  padding:16px;min-height:132px;max-height:280px;overflow-y:auto;
+  font-size:16px;line-height:1.85;white-space:pre-wrap;
+  -webkit-overflow-scrolling:touch;
+}
+.script.empty{color:var(--muted);font-size:14px;display:grid;place-items:center;text-align:center;}
+.meta-row{
+  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;
+}
+
+/* ── Meter (signature): segmented broadcast level bar ── */
+.meter-block{margin-top:16px;}
+.meter{
+  position:relative;height:16px;border-radius:5px;overflow:hidden;
+  background:#0A1120;border:1px solid var(--line);
+}
+.meter-fill{
+  position:absolute;inset:0 auto 0 0;width:0%;
+  background:linear-gradient(90deg,#2E7F6E,var(--ready) 58%,var(--amber));
+  transition:width .12s linear;
+}
+.meter-ticks{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent 0 5px,rgba(6,10,20,.92) 5px 7px);
+  pointer-events:none;
+}
+.timecode{
+  display:flex;justify-content:space-between;align-items:center;margin-top:9px;
+  font-family:var(--font-label);font-size:15px;letter-spacing:.09em;
+  color:var(--text-dim);font-variant-numeric:tabular-nums;
+}
+.timecode b{color:var(--amber);font-weight:600;}
+
+/* ── Transport ── */
+.transport{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:16px;}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:52px;padding:12px 16px;border-radius:var(--radius-sm);
+  border:1px solid var(--line);background:var(--navy-700);color:var(--text);
+  font-family:var(--font-label);font-size:17px;font-weight:600;letter-spacing:.13em;
+  text-transform:uppercase;cursor:pointer;
+  transition:transform .1s ease,background .15s ease,border-color .15s ease,opacity .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn:hover{background:var(--navy-600);}
+.btn:active{transform:translateY(1px);}
+.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+.btn[disabled]{opacity:.36;cursor:not-allowed;transform:none;}
+.btn-play{
+  background:linear-gradient(180deg,#F5BF55,#D99A22);
+  border-color:#B9821B;color:#1A1204;
+}
+.btn-play:hover{background:linear-gradient(180deg,#FFCD6B,#E5A628);}
+.btn-ghost{background:transparent;}
+.btn-sm{min-height:40px;font-size:14px;padding:8px 14px;}
+
+/* ── Status ── */
+.status{
+  margin-top:14px;padding:11px 14px;border-radius:var(--radius-sm);
+  background:rgba(10,17,32,.8);border:1px solid var(--line-soft);
+  font-size:13.5px;color:var(--text-dim);min-height:44px;display:flex;align-items:center;gap:9px;
+}
+.status.warn{border-color:#6B5320;background:rgba(240,179,65,.09);color:#F3CA7C;}
+.status.err{border-color:#6B2530;background:rgba(255,75,75,.09);color:#FF9C9C;}
+.status.ok{border-color:#22624F;background:rgba(63,201,168,.09);color:#7FE0C6;}
+
+/* ── Library table ── */
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:13px;}
+.tools input[type=text]{flex:1;min-width:180px;}
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line-soft);border-radius:var(--radius-sm);}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:660px;}
+thead th{
+  position:sticky;top:0;z-index:1;
+  background:var(--navy-800);text-align:left;padding:11px 13px;
+  font-family:var(--font-label);font-size:13px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--line);white-space:nowrap;
+}
+tbody td{padding:11px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top;color:var(--text-dim);}
+tbody tr{cursor:pointer;transition:background .12s ease;}
+tbody tr:hover{background:rgba(240,179,65,.06);}
+tbody tr.sel{background:rgba(240,179,65,.13);}
+tbody tr.sel td{color:var(--text);}
+td.c-id{font-family:var(--font-label);letter-spacing:.06em;color:var(--muted);white-space:nowrap;}
+td.c-dur{font-family:var(--font-label);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
+td.c-script{max-width:360px;}
+.td-clip{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.empty-note{padding:28px 14px;text-align:center;color:var(--muted);font-size:14px;}
+.lang-tag{
+  display:inline-block;padding:1px 7px;border-radius:5px;
+  font-family:var(--font-label);font-size:12px;letter-spacing:.1em;
+  background:var(--navy-700);border:1px solid var(--line);color:var(--text-dim);
+}
+
+footer{margin-top:26px;text-align:center;font-size:12.5px;color:var(--muted);line-height:1.9;}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+}
+</style>
+</head>
+<body>
+<div class="rail" aria-hidden="true"></div>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><span>SP</span></div>
+      <div class="brand-text">
+        <h1>스팟 방송 콘솔</h1>
+        <p>Spot Broadcast Console</p>
+      </div>
+    </div>
+    <div class="lamp" role="status" aria-live="polite">
+      <span class="lamp-dot" aria-hidden="true"></span>
+      <span class="lamp-text" id="lampText">STANDBY</span>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- 좌측: 라이브러리 + 선택 -->
+    <div>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>1 · 라이브러리</h2>
+          <small>엑셀 대본표를 불러옵니다</small>
+        </div>
+
+        <div class="drop" id="drop" tabindex="0" role="button"
+             aria-label="엑셀 파일 선택. 파일을 끌어다 놓거나 눌러서 선택하세요.">
+          <p class="drop-title">엑셀 파일을 끌어다 놓거나 눌러서 선택</p>
+          <p class="drop-sub">.xlsx · .xls · .csv &nbsp;|&nbsp; 최대 20MB</p>
+          <input type="file" id="file" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt">
+        </div>
+
+        <div class="filebar" id="filebar">
+          <span class="chip" id="chipFile">불러온 파일 없음</span>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnTemplate">양식 내려받기</button>
+        </div>
+
+        <div class="filebar" id="colbar" style="margin-top:10px;"></div>
+      </section>
+
+      <section class="panel" style="margin-top:18px;">
+        <div class="panel-head">
+          <h2>2 · 스팟 선택</h2>
+          <small>스팟명과 오디오명을 입력하세요</small>
+        </div>
+
+        <div class="field">
+          <label class="lb" for="inSpot">스팟명</label>
+          <input type="text" id="inSpot" list="dlSpot" autocomplete="off" spellcheck="false"
+                 placeholder="예: 개장안내" enterkeyhint="next">
+          <datalist id="dlSpot"></datalist>
+        </div>
+
+        <div class="field">
+          <label class="lb" for="inAudio">오디오명</label>
+          <input type="text" id="inAudio" list="dlAudio" autocomplete="off" spellcheck="false"
+                 placeholder="예: 개장안내_KO_01" enterkeyhint="go">
+          <datalist id="dlAudio"></datalist>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label class="lb" for="selLang">언어</label>
+            <select id="selLang">
+              <option value="auto">자동 감지</option>
+              <option value="ko">한국어</option>
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="lb" for="selVoice">음성 엔진</label>
+            <select id="selVoice"><option value="">자동 선택 (권장)</option></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="lb" for="rngRate">속도</label>
+          <div class="slider-row">
+            <input type="range" id="rngRate" min="0.5" max="2" step="0.05" value="1">
+            <span class="slider-val" id="valRate">1.00x</span>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label class="lb" for="rngPitch">음높이</label>
+            <div class="slider-row">
+              <input type="range" id="rngPitch" min="0.5" max="1.5" step="0.05" value="1">
+              <span class="slider-val" id="valPitch">1.00</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="lb" for="rngVol">음량</label>
+            <div class="slider-row">
+              <input type="range" id="rngVol" min="0" max="1" step="0.05" value="1">
+              <span class="slider-val" id="valVol">100%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="check">
+            <input type="checkbox" id="chkFit">
+            <span>재생시간(초)에 맞춰 속도를 자동으로 맞춥니다</span>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <!-- 우측: 송출 -->
+    <div>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>3 · 송출</h2>
+          <small id="headNow">대기 중</small>
+        </div>
+
+        <div class="meta-row" id="metaRow"></div>
+
+        <div class="script empty" id="scriptView" aria-live="polite">
+          스팟을 선택하면 대본이 여기에 표시됩니다
+        </div>
+
+        <div class="meter-block">
+          <div class="meter" role="progressbar" aria-label="재생 진행" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="meter">
+            <div class="meter-fill" id="meterFill"></div>
+            <div class="meter-ticks" aria-hidden="true"></div>
+          </div>
+          <div class="timecode">
+            <span>경과 <b id="tcNow">00:00</b></span>
+            <span id="tcInfo">예상 --:-- / 지정 --:--</span>
+          </div>
+        </div>
+
+        <div class="transport">
+          <button type="button" class="btn btn-play" id="btnPlay">재생</button>
+          <button type="button" class="btn" id="btnPause" disabled>일시정지</button>
+          <button type="button" class="btn" id="btnStop" disabled>정지</button>
+        </div>
+
+        <div class="status" id="status" role="status" aria-live="polite">
+          엑셀 파일을 불러온 뒤 스팟을 선택하세요.
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:18px;">
+        <div class="panel-head">
+          <h2>지원 음성</h2>
+          <small>이 기기에 설치된 언어별 음성</small>
+        </div>
+        <div class="filebar" id="voiceSupport">
+          <span class="chip">음성 목록 확인 중…</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- 목록 -->
+    <section class="panel span-2">
+      <div class="panel-head">
+        <h2>대본 목록</h2>
+        <small id="listCount">0건</small>
+      </div>
+      <div class="tools">
+        <input type="text" id="inFilter" placeholder="스팟명 · 오디오명 · 대본 내용으로 검색" autocomplete="off">
+        <button type="button" class="btn btn-ghost btn-sm" id="btnClearFilter">검색 지우기</button>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">스팟아이디</th>
+              <th scope="col">스팟명</th>
+              <th scope="col">오디오명</th>
+              <th scope="col">언어</th>
+              <th scope="col">대본내용</th>
+              <th scope="col" style="text-align:right;">재생시간</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="6" class="empty-note">불러온 대본이 없습니다. 엑셀 파일을 올려 주세요.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    브라우저에 내장된 음성 엔진으로 즉시 송출합니다. 파일은 기기 안에서만 처리되며 어디에도 전송되지 않습니다.<br>
+    hhd77@hanmail.net
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ═══════════════════════════════════════════
+     0. 상수 / 유틸
+     ═══════════════════════════════════════════ */
+  var MAX_FILE      = 20 * 1024 * 1024;   // 20MB
+  var MAX_ROWS      = 20000;              // 행 상한 (메모리 보호)
+  var MAX_SCRIPT    = 8000;               // 대본 1건 최대 길이
+  var MAX_RENDER    = 300;                // 표에 그리는 최대 행 수
+  var OK_EXT        = ['xlsx', 'xls', 'xlsm', 'csv', 'tsv', 'txt'];
+
+  var synth = window.speechSynthesis;
+
+  function $(id) { return document.getElementById(id); }
+
+  function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+  /** 제어문자 제거 + 길이 제한 (신뢰할 수 없는 파일 입력 정화) */
+  function sanitize(v, max) {
+    if (v === null || v === undefined) return '';
+    var s = String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+    s = s.replace(/\r\n?/g, '\n').trim();
+    if (max && s.length > max) s = s.slice(0, max);
+    return s;
+  }
+
+  function normKey(s) {
+    return String(s == null ? '' : s).replace(/[\s_\-().·\/\[\]]/g, '').toLowerCase();
+  }
+
+  function normCmp(s) {
+    return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  function mmss(sec) {
+    if (!isFinite(sec) || sec < 0) sec = 0;
+    var m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+    return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  /* ═══════════════════════════════════════════
+     1. 언어 판별 · 음성 선택
+     ═══════════════════════════════════════════ */
+  var RE_HANGUL = /[\uAC00-\uD7A3\u1100-\u11FF\u3130-\u318F]/;
+  var RE_KANA   = /[\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF]/;
+  var RE_HAN    = /[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/;
+  var RE_LATIN  = /[A-Za-z]/;
+
+  var LANG_NAME = { ko: '한국어', en: 'English', zh: '中文', ja: '日本語' };
+  var LANG_CODE = { ko: 'ko-KR', en: 'en-US', zh: 'zh-CN', ja: 'ja-JP' };
+
+  /* 언어별 선호 음성 (기기별 최적 엔진 우선순위) */
+  var LANG_PREF = {
+    ko: { codes: ['ko-kr', 'ko'], names: [/google\s*한국/i, /yuna/i, /heami/i, /sunhi/i, /injoon/i, /nova/i] },
+    en: { codes: ['en-us', 'en-gb', 'en-au', 'en'], names: [/google\s*us\s*english/i, /samantha/i, /aria/i, /jenny/i, /guy/i, /zira/i, /daniel/i] },
+    zh: { codes: ['zh-cn', 'cmn-hans-cn', 'zh-tw', 'zh-hk', 'zh'], names: [/google\s*普通话/i, /ting-?ting/i, /xiaoxiao/i, /yaoyao/i, /huihui/i, /yunxi/i, /meijia/i] },
+    ja: { codes: ['ja-jp', 'ja'], names: [/google\s*日本語/i, /kyoko/i, /o-?ren/i, /nanami/i, /ayumi/i, /haruka/i, /keita/i] }
+  };
+
+  /* 언어별 평균 발화 속도(초당 문자 수, rate=1 기준) — 예상 시간 산출용 */
+  var CPS = { ko: 5.6, en: 14.5, zh: 4.7, ja: 6.3 };
+
+  function detectLang(text) {
+    if (!text) return 'ko';
+    if (RE_HANGUL.test(text)) return 'ko';
+    if (RE_KANA.test(text))   return 'ja';
+    if (RE_HAN.test(text))    return 'zh';
+    if (RE_LATIN.test(text))  return 'en';
+    return 'ko';
+  }
+
+  function charLang(ch) {
+    if (RE_HANGUL.test(ch)) return 'ko';
+    if (RE_KANA.test(ch))   return 'ja';
+    if (RE_HAN.test(ch))    return 'zh';
+    if (RE_LATIN.test(ch))  return 'en';
+    return null; // 숫자·기호·공백 → 직전 구간에 붙임
+  }
+
+  /** 혼합 대본을 언어 구간으로 분할 (자동 감지 모드) */
+  function segmentByLang(text) {
+    var segs = [], cur = null, i, L, ch;
+    for (i = 0; i < text.length; i++) {
+      ch = text[i];
+      L = charLang(ch);
+      if (L === null) {
+        if (cur) { cur.text += ch; }
+        else { cur = { lang: null, text: ch }; }
+        continue;
+      }
+      if (cur && (cur.lang === L || cur.lang === null)) {
+        cur.lang = L; cur.text += ch;
+      } else {
+        if (cur) segs.push(cur);
+        cur = { lang: L, text: ch };
+      }
+    }
+    if (cur) segs.push(cur);
+
+    // 언어 미확정 구간 및 아주 짧은 구간은 이웃에 병합
+    var out = [], k;
+    for (k = 0; k < segs.length; k++) {
+      var s = segs[k];
+      if (s.lang === null) s.lang = out.length ? out[out.length - 1].lang : detectLang(text);
+      var core = s.text.replace(/[\s\d.,!?;:'"()\[\]{}~`@#$%^&*+=|\\\/<>_\-·、。！？，．]/g, '');
+      var tooShort = core.length > 0 && core.length < 2;
+      if (out.length && (out[out.length - 1].lang === s.lang || tooShort)) {
+        out[out.length - 1].text += s.text;
+      } else {
+        out.push({ lang: s.lang, text: s.text });
+      }
+    }
+    return out.filter(function (s) { return s.text.trim().length > 0; });
+  }
+
+  var voices = [];
+
+  function scoreVoice(v, lang) {
+    var pref = LANG_PREF[lang];
+    var vl = String(v.lang || '').toLowerCase().replace('_', '-');
+    var idx = pref.codes.indexOf(vl);
+    var score = -1;
+    if (idx >= 0) score = 100 - idx * 8;
+    else if (vl.split('-')[0] === lang) score = 55;
+    else return -1;
+
+    for (var i = 0; i < pref.names.length; i++) {
+      if (pref.names[i].test(v.name)) { score += 40 - i * 3; break; }
+    }
+    if (/natural|neural|premium|enhanced/i.test(v.name)) score += 22;
+    if (v.localService) score += 8;
+    if (/compact|eloquence/i.test(v.name)) score -= 15;
+    return score;
+  }
+
+  function bestVoice(lang) {
+    var best = null, bestScore = -1;
+    for (var i = 0; i < voices.length; i++) {
+      var sc = scoreVoice(voices[i], lang);
+      if (sc > bestScore) { bestScore = sc; best = voices[i]; }
+    }
+    return bestScore >= 0 ? best : null;
+  }
+
+  function voicesFor(lang) {
+    var list = [];
+    for (var i = 0; i < voices.length; i++) {
+      if (scoreVoice(voices[i], lang) >= 0) list.push(voices[i]);
+    }
+    list.sort(function (a, b) { return scoreVoice(b, lang) - scoreVoice(a, lang); });
+    return list;
+  }
+
+  /* ═══════════════════════════════════════════
+     2. 상태
+     ═══════════════════════════════════════════ */
+  var state = {
+    rows: [],
+    spotMap: null,       // 정규화 스팟명 → row[]
+    selected: null,
+    filtered: [],
+    segments: [],
+    segIndex: 0,
+    playing: false,
+    paused: false,
+    estTotal: 0,
+    startTs: 0,
+    pausedAt: 0,
+    pausedTotal: 0,
+    tick: null,
+    keepAlive: null,
+    current: null,
+    manualVoice: ''
+  };
+
+  /* DOM 참조 */
+  var elDrop = $('drop'), elFile = $('file'), elChipFile = $('chipFile'), elColbar = $('colbar');
+  var elSpot = $('inSpot'), elAudio = $('inAudio'), elDlSpot = $('dlSpot'), elDlAudio = $('dlAudio');
+  var elLang = $('selLang'), elVoice = $('selVoice');
+  var elRate = $('rngRate'), elPitch = $('rngPitch'), elVol = $('rngVol'), elFit = $('chkFit');
+  var elValRate = $('valRate'), elValPitch = $('valPitch'), elValVol = $('valVol');
+  var elScript = $('scriptView'), elMeta = $('metaRow'), elHeadNow = $('headNow');
+  var elMeter = $('meter'), elMeterFill = $('meterFill'), elTcNow = $('tcNow'), elTcInfo = $('tcInfo');
+  var elPlay = $('btnPlay'), elPause = $('btnPause'), elStop = $('btnStop');
+  var elStatus = $('status'), elLamp = $('lampText'), elVoiceSupport = $('voiceSupport');
+  var elTbody = $('tbody'), elFilter = $('inFilter'), elListCount = $('listCount');
+
+  function setStatus(msg, kind) {
+    elStatus.textContent = msg;
+    elStatus.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function setLamp(mode) {
+    document.body.classList.toggle('is-live', mode === 'live');
+    document.body.classList.toggle('is-ready', mode === 'ready');
+    elLamp.textContent = mode === 'live' ? 'ON AIR' : (mode === 'ready' ? 'READY' : 'STANDBY');
+  }
+
+  /* ═══════════════════════════════════════════
+     3. 파일 읽기 · 파싱
+     ═══════════════════════════════════════════ */
+  var FIELD_ALIASES = {
+    id:     ['스팟아이디', '스팟id', '스팟코드', '아이디', '코드', 'id', 'spotid', 'no', '번호'],
+    spot:   ['스팟명', '스팟이름', '스팟', 'spot', 'spotname', '구분'],
+    audio:  ['오디오명', '오디오이름', '오디오', '음원명', '음원', '파일명', 'audio', 'audioname', 'file'],
+    script: ['대본내용', '대본', '내용', '멘트', '스크립트', 'script', 'text', 'contents', 'content'],
+    dur:    ['재생시간초', '재생시간', '재생길이', '시간', '길이', 'duration', 'sec', 'seconds', 'time']
+  };
+
+  function mapHeader(cells) {
+    var map = { id: -1, spot: -1, audio: -1, script: -1, dur: -1 };
+    var hits = 0, i, key, k;
+    for (i = 0; i < cells.length; i++) {
+      key = normKey(cells[i]);
+      if (!key) continue;
+      for (k in FIELD_ALIASES) {
+        if (!Object.prototype.hasOwnProperty.call(FIELD_ALIASES, k)) continue;
+        if (map[k] !== -1) continue;
+        if (FIELD_ALIASES[k].indexOf(key) !== -1) { map[k] = i; hits++; break; }
+      }
+    }
+    return { map: map, hits: hits };
+  }
+
+  function rowsFromMatrix(matrix) {
+    var headerAt = -1, mapped = null, i, r;
+
+    for (i = 0; i < Math.min(matrix.length, 12); i++) {
+      r = mapHeader(matrix[i] || []);
+      if (r.hits >= 3 && r.map.script !== -1) { headerAt = i; mapped = r.map; break; }
+    }
+    var positional = false;
+    if (headerAt === -1) {
+      headerAt = 0;
+      mapped = { id: 0, spot: 1, audio: 2, script: 3, dur: 4 };
+      positional = true;
+    }
+
+    var out = [], seen = 0;
+    for (i = headerAt + 1; i < matrix.length; i++) {
+      var c = matrix[i] || [];
+      var pick = function (idx) { return idx >= 0 && idx < c.length ? c[idx] : ''; };
+      var script = sanitize(pick(mapped.script), MAX_SCRIPT);
+      var spot = sanitize(pick(mapped.spot), 200);
+      var audio = sanitize(pick(mapped.audio), 200);
+      if (!script && !spot && !audio) continue;
+      if (!script) continue;
+
+      var durRaw = String(sanitize(pick(mapped.dur), 30)).replace(/[^\d.]/g, '');
+      var dur = parseFloat(durRaw);
+      if (!isFinite(dur) || dur < 0) dur = 0;
+
+      out.push({
+        id: sanitize(pick(mapped.id), 80),
+        spot: spot,
+        audio: audio,
+        script: script,
+        dur: dur,
+        lang: detectLang(script)
+      });
+      seen++;
+      if (seen >= MAX_ROWS) break;
+    }
+    return { rows: out, map: mapped, positional: positional };
+  }
+
+  /* CSV/TSV 파서 (RFC4180 + 구분자 자동 판별) */
+  function parseDelimited(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    var head = text.slice(0, 4000);
+    var counts = { ',': (head.match(/,/g) || []).length, ';': (head.match(/;/g) || []).length, '\t': (head.match(/\t/g) || []).length };
+    var delim = ',';
+    if (counts['\t'] > counts[','] && counts['\t'] > counts[';']) delim = '\t';
+    else if (counts[';'] > counts[',']) delim = ';';
+
+    var rows = [], row = [], cell = '', inQ = false, i, ch;
+    for (i = 0; i < text.length; i++) {
+      ch = text[i];
+      if (inQ) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { cell += '"'; i++; }
+          else inQ = false;
+        } else cell += ch;
+      } else if (ch === '"') {
+        inQ = true;
+      } else if (ch === delim) {
+        row.push(cell); cell = '';
+      } else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell); rows.push(row); row = []; cell = '';
+      } else cell += ch;
+    }
+    if (cell.length || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+
+  /** UTF-8 우선, 실패 시 EUC-KR로 해독 (한글 깨짐 방지) */
+  function decodeText(buf) {
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+    } catch (e) {
+      try { return new TextDecoder('euc-kr').decode(buf); }
+      catch (e2) { return new TextDecoder('utf-8').decode(buf); }
+    }
+  }
+
+  function loadFile(file) {
+    if (!file) return;
+    var name = file.name || 'file';
+    var ext = name.split('.').pop().toLowerCase();
+    if (OK_EXT.indexOf(ext) === -1) {
+      setStatus('지원하지 않는 형식입니다. xlsx, xls, csv 파일을 올려 주세요.', 'err');
+      return;
+    }
+    if (file.size > MAX_FILE) {
+      setStatus('파일이 20MB를 넘습니다. 대본 시트만 남겨서 다시 올려 주세요.', 'err');
+      return;
+    }
+
+    setStatus('파일을 읽는 중입니다…');
+    var reader = new FileReader();
+
+    reader.onerror = function () {
+      setStatus('파일을 읽지 못했습니다. 파일이 열려 있다면 닫고 다시 시도하세요.', 'err');
+      reader.onload = reader.onerror = null;
+    };
+
+    reader.onload = function (ev) {
+      var buf = ev.target.result;
+      try {
+        var matrix;
+        if (ext === 'csv' || ext === 'tsv' || ext === 'txt') {
+          matrix = parseDelimited(decodeText(buf));
+        } else {
+          if (typeof XLSX === 'undefined') {
+            setStatus('엑셀 해석 모듈을 불러오지 못했습니다. 인터넷 연결을 확인하거나 CSV로 저장해 올려 주세요.', 'err');
+            return;
+          }
+          var wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+          var sheetName = wb.SheetNames[0];
+          // 대본이 들어 있을 법한 시트를 우선 선택
+          for (var s = 0; s < wb.SheetNames.length; s++) {
+            if (/대본|스팟|spot|script/i.test(wb.SheetNames[s])) { sheetName = wb.SheetNames[s]; break; }
+          }
+          matrix = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '', raw: false, blankrows: false });
+        }
+        applyRows(rowsFromMatrix(matrix), name);
+      } catch (err) {
+        setStatus('파일을 해석하지 못했습니다. 첫 행에 머리글이 있는지 확인해 주세요.', 'err');
+      } finally {
+        buf = null;
+        reader.onload = reader.onerror = null;   // 참조 해제 (메모리 회수)
+      }
+    };
+
+    reader.readAsArrayBuffer(file);   // 텍스트도 바이트로 읽어 인코딩을 직접 판별
+  }
+
+  function applyRows(res, fileName) {
+    stop();
+    state.rows = res.rows;
+    state.selected = null;
+    state.spotMap = new Map();
+
+    var i, key;
+    for (i = 0; i < state.rows.length; i++) {
+      state.rows[i]._i = i;                    // 표 렌더링용 인덱스 캐시
+      key = normCmp(state.rows[i].spot);
+      if (!state.spotMap.has(key)) state.spotMap.set(key, []);
+      state.spotMap.get(key).push(state.rows[i]);
+    }
+
+    elChipFile.textContent = fileName + ' · ' + state.rows.length + '건';
+    elChipFile.className = 'chip on';
+
+    // 인식된 컬럼 표시
+    var labels = { id: '스팟아이디', spot: '스팟명', audio: '오디오명', script: '대본내용', dur: '재생시간' };
+    elColbar.textContent = '';
+    var order = ['id', 'spot', 'audio', 'script', 'dur'], k;
+    for (k = 0; k < order.length; k++) {
+      var sp = document.createElement('span');
+      var found = res.map[order[k]] !== -1;
+      sp.className = 'chip ' + (found ? 'on' : 'off');
+      sp.textContent = labels[order[k]];
+      elColbar.appendChild(sp);
+    }
+
+    buildSpotList();
+    elSpot.value = '';
+    elAudio.value = '';
+    elFilter.value = '';
+    renderTable();
+    clearSelection();
+
+    if (!state.rows.length) {
+      setStatus('읽을 수 있는 대본 행이 없습니다. 컬럼 이름을 확인해 주세요.', 'warn');
+      setLamp('standby');
+    } else if (res.positional) {
+      setStatus(state.rows.length + '건을 불러왔습니다. 머리글을 찾지 못해 컬럼 순서대로 읽었습니다.', 'warn');
+      setLamp('ready');
+    } else {
+      setStatus(state.rows.length + '건을 불러왔습니다. 스팟명과 오디오명을 입력하세요.', 'ok');
+      setLamp('ready');
+    }
+  }
+
+  function buildSpotList() {
+    var seen = Object.create(null), frag = document.createDocumentFragment(), i, v;
+    for (i = 0; i < state.rows.length; i++) {
+      v = state.rows[i].spot;
+      if (!v || seen[v]) continue;
+      seen[v] = 1;
+      var o = document.createElement('option');
+      o.value = v;
+      frag.appendChild(o);
+    }
+    elDlSpot.textContent = '';
+    elDlSpot.appendChild(frag);
+    buildAudioList();
+  }
+
+  function buildAudioList() {
+    var spotKey = normCmp(elSpot.value);
+    var pool = (spotKey && state.spotMap && state.spotMap.has(spotKey)) ? state.spotMap.get(spotKey) : state.rows;
+    var frag = document.createDocumentFragment(), seen = Object.create(null), i, v;
+    for (i = 0; i < pool.length; i++) {
+      v = pool[i].audio;
+      if (!v || seen[v]) continue;
+      seen[v] = 1;
+      var o = document.createElement('option');
+      o.value = v;
+      frag.appendChild(o);
+    }
+    elDlAudio.textContent = '';
+    elDlAudio.appendChild(frag);
+  }
+
+  /* ═══════════════════════════════════════════
+     4. 선택
+     ═══════════════════════════════════════════ */
+  function findRow(spotText, audioText) {
+    var sp = normCmp(spotText), au = normCmp(audioText);
+    if (!sp && !au) return { list: [] };
+
+    var pool = state.rows, exact = [], partial = [], i, r, sMatch, aMatch;
+    for (i = 0; i < pool.length; i++) {
+      r = pool[i];
+      var rs = normCmp(r.spot), ra = normCmp(r.audio);
+      sMatch = !sp || rs === sp;
+      aMatch = !au || ra === au;
+      if (sMatch && aMatch) { exact.push(r); continue; }
+      sMatch = !sp || rs.indexOf(sp) !== -1;
+      aMatch = !au || ra.indexOf(au) !== -1;
+      if (sMatch && aMatch) partial.push(r);
+    }
+    return { list: exact.length ? exact : partial, exact: exact.length > 0 };
+  }
+
+  function trySelect(quiet) {
+    if (!state.rows.length) return;
+    var res = findRow(elSpot.value, elAudio.value);
+    if (!res.list.length) {
+      clearSelection();
+      if (!quiet) setStatus('일치하는 스팟이 없습니다. 목록에서 직접 선택할 수도 있습니다.', 'warn');
+      return;
+    }
+    if (res.list.length > 1) {
+      select(res.list[0], true);
+      setStatus(res.list.length + '건이 일치합니다. 첫 번째 항목을 올렸습니다. 다른 항목은 아래 목록에서 선택하세요.', 'warn');
+      return;
+    }
+    select(res.list[0]);
+  }
+
+  function select(row, keepMsg) {
+    state.selected = row;
+    stop(true);
+
+    elScript.classList.remove('empty');
+    elScript.textContent = row.script;
+
+    elHeadNow.textContent = (row.spot || '(스팟명 없음)') + ' · ' + (row.audio || '(오디오명 없음)');
+
+    elMeta.textContent = '';
+    var chips = [];
+    if (row.id) chips.push({ t: row.id, on: false });
+    chips.push({ t: LANG_NAME[row.lang] || row.lang, on: true });
+    chips.push({ t: row.script.length + '자', on: false });
+    if (row.dur > 0) chips.push({ t: '지정 ' + mmss(row.dur), on: false });
+    for (var i = 0; i < chips.length; i++) {
+      var c = document.createElement('span');
+      c.className = 'chip' + (chips[i].on ? ' on' : '');
+      c.textContent = chips[i].t;
+      elMeta.appendChild(c);
+    }
+
+    if (elLang.value === 'auto') syncVoiceOptions(row.lang);
+    updateEstimate();
+    markTableSelection();
+    setLamp('ready');
+    if (!keepMsg) setStatus('준비되었습니다. 재생을 누르면 송출합니다.', 'ok');
+  }
+
+  function clearSelection() {
+    state.selected = null;
+    elScript.classList.add('empty');
+    elScript.textContent = state.rows.length ? '스팟을 선택하면 대본이 여기에 표시됩니다' : '엑셀 파일을 불러와 주세요';
+    elMeta.textContent = '';
+    elHeadNow.textContent = '대기 중';
+    elTcInfo.textContent = '예상 --:-- / 지정 --:--';
+    setMeter(0);
+    markTableSelection();
+  }
+
+  /* ═══════════════════════════════════════════
+     5. 재생시간 예측
+     ═══════════════════════════════════════════ */
+  function buildSegments(row) {
+    var mode = elLang.value;
+    if (mode === 'auto') return segmentByLang(row.script);
+    return [{ lang: mode, text: row.script }];
+  }
+
+  function estimateSeconds(segs, rate) {
+    var total = 0, i;
+    for (i = 0; i < segs.length; i++) {
+      var n = segs[i].text.replace(/\s/g, '').length;
+      total += n / (CPS[segs[i].lang] || 6);
+    }
+    total += segs.length * 0.25;                 // 구간 전환 여유
+    return total / clamp(rate || 1, 0.5, 3);
+  }
+
+  function effectiveRate(segs, row) {
+    var base = parseFloat(elRate.value) || 1;
+    if (elFit.checked && row && row.dur > 0) {
+      var raw = estimateSeconds(segs, 1);
+      var fit = raw / row.dur;
+      return clamp(fit, 0.5, 2);
+    }
+    return clamp(base, 0.5, 2);
+  }
+
+  function updateEstimate() {
+    if (!state.selected) { elTcInfo.textContent = '예상 --:-- / 지정 --:--'; return; }
+    var segs = buildSegments(state.selected);
+    var rate = effectiveRate(segs, state.selected);
+    var est = estimateSeconds(segs, rate);
+    state.estTotal = est;
+    var target = state.selected.dur > 0 ? mmss(state.selected.dur) : '--:--';
+    elTcInfo.textContent = '예상 ' + mmss(est) + ' / 지정 ' + target +
+      (elFit.checked && state.selected.dur > 0 ? ' · 속도 ' + rate.toFixed(2) + 'x' : '');
+  }
+
+  function setMeter(ratio) {
+    var pct = clamp(ratio, 0, 1) * 100;
+    elMeterFill.style.width = pct.toFixed(1) + '%';
+    elMeter.setAttribute('aria-valuenow', String(Math.round(pct)));
+  }
+
+  /* ═══════════════════════════════════════════
+     6. 음성 목록
+     ═══════════════════════════════════════════ */
+  function loadVoices() {
+    var list = synth.getVoices ? synth.getVoices() : [];
+    if (!list || !list.length) return false;
+    voices = list;
+    syncVoiceOptions(currentLangHint());
+    renderVoiceSupport();
+    return true;
+  }
+
+  function currentLangHint() {
+    if (elLang.value !== 'auto') return elLang.value;
+    return state.selected ? state.selected.lang : 'ko';
+  }
+
+  function syncVoiceOptions(lang) {
+    var list = voicesFor(lang);
+    var prev = state.manualVoice;
+    elVoice.textContent = '';
+
+    var auto = document.createElement('option');
+    auto.value = '';
+    auto.textContent = '자동 선택 (권장)';
+    elVoice.appendChild(auto);
+
+    var frag = document.createDocumentFragment(), i, keep = false;
+    for (i = 0; i < list.length; i++) {
+      var o = document.createElement('option');
+      o.value = list[i].voiceURI;
+      o.textContent = list[i].name + ' · ' + list[i].lang;
+      if (list[i].voiceURI === prev) { o.selected = true; keep = true; }
+      frag.appendChild(o);
+    }
+    elVoice.appendChild(frag);
+    if (!keep) { elVoice.value = ''; state.manualVoice = ''; }
+
+    if (!list.length) {
+      var none = document.createElement('option');
+      none.value = '';
+      none.textContent = '이 기기에 ' + (LANG_NAME[lang] || lang) + ' 음성이 없습니다';
+      elVoice.appendChild(none);
+    }
+  }
+
+  function renderVoiceSupport() {
+    elVoiceSupport.textContent = '';
+    var langs = ['ko', 'en', 'zh', 'ja'], missing = [], i;
+    for (i = 0; i < langs.length; i++) {
+      var n = voicesFor(langs[i]).length;
+      var sp = document.createElement('span');
+      sp.className = 'chip ' + (n ? 'on' : 'off');
+      sp.textContent = LANG_NAME[langs[i]] + ' ' + n;
+      elVoiceSupport.appendChild(sp);
+      if (!n) missing.push(LANG_NAME[langs[i]]);
+    }
+    if (missing.length) {
+      var note = document.createElement('span');
+      note.style.fontSize = '12.5px';
+      note.style.color = '#F3CA7C';
+      note.textContent = missing.join(', ') + ' 음성이 없습니다. Chrome 또는 Edge를 쓰거나 시스템 설정에서 음성을 추가하세요.';
+      elVoiceSupport.appendChild(note);
+    }
+  }
+
+  function pickVoiceFor(lang) {
+    if (state.manualVoice) {
+      for (var i = 0; i < voices.length; i++) {
+        if (voices[i].voiceURI === state.manualVoice) {
+          var vl = String(voices[i].lang || '').toLowerCase().split('-')[0];
+          if (vl === lang || elLang.value !== 'auto') return voices[i];
+        }
+      }
+    }
+    return bestVoice(lang);
+  }
+
+  /* ═══════════════════════════════════════════
+     7. 송출
+     ═══════════════════════════════════════════ */
+  var unlocked = false;
+  function unlockAudio() {
+    if (unlocked) return;
+    unlocked = true;
+    try {
+      var u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      synth.speak(u);
+      synth.cancel();
+    } catch (e) { /* 무시 */ }
+  }
+
+  function play() {
+    if (!state.selected) {
+      trySelect();
+      if (!state.selected) { setStatus('먼저 스팟을 선택하세요.', 'warn'); return; }
+    }
+    if (state.paused) { resume(); return; }
+
+    var row = state.selected;
+    var segs = buildSegments(row);
+    if (!segs.length) { setStatus('읽을 대본이 비어 있습니다.', 'warn'); return; }
+
+    var missing = [], i;
+    for (i = 0; i < segs.length; i++) {
+      if (!pickVoiceFor(segs[i].lang) && missing.indexOf(segs[i].lang) === -1) missing.push(segs[i].lang);
+    }
+    if (missing.length === segs.length && missing.length) {
+      setStatus((LANG_NAME[missing[0]] || missing[0]) + ' 음성이 이 기기에 없어 기본 음성으로 읽습니다.', 'warn');
+    }
+
+    stopSpeech();
+    state.segments = segs;
+    state.segIndex = 0;
+    state.playing = true;
+    state.paused = false;
+    state.pausedTotal = 0;
+    state.startTs = Date.now();
+    state.estTotal = estimateSeconds(segs, effectiveRate(segs, row));
+
+    elPlay.textContent = '재생 중';
+    elPlay.disabled = true;
+    elPause.disabled = false;
+    elStop.disabled = false;
+    setLamp('live');
+    setStatus('송출 중입니다 — ' + (row.spot || '') + ' / ' + (row.audio || ''), 'ok');
+
+    speakNext();
+    startTicker();
+    startKeepAlive();
+  }
+
+  function speakNext() {
+    if (!state.playing) return;
+    if (state.segIndex >= state.segments.length) { finish(); return; }
+
+    var seg = state.segments[state.segIndex];
+    var u = new SpeechSynthesisUtterance(seg.text);
+    var v = pickVoiceFor(seg.lang);
+    if (v) u.voice = v;
+    u.lang = v ? v.lang : (LANG_CODE[seg.lang] || 'ko-KR');
+    u.rate = effectiveRate(state.segments, state.selected);
+    u.pitch = clamp(parseFloat(elPitch.value) || 1, 0.5, 1.5);
+    u.volume = clamp(parseFloat(elVol.value), 0, 1);
+
+    u.onend = function () {
+      u.onend = u.onerror = null;
+      if (!state.playing) return;
+      state.segIndex++;
+      speakNext();
+    };
+    u.onerror = function (e) {
+      u.onend = u.onerror = null;
+      var reason = e && e.error ? e.error : '';
+      if (reason === 'interrupted' || reason === 'canceled') return;
+      setStatus('음성 출력 중 오류가 발생했습니다 (' + reason + '). 정지 후 다시 시도하세요.', 'err');
+      finish();
+    };
+
+    state.current = u;
+    synth.speak(u);
+  }
+
+  function startTicker() {
+    stopTicker();
+    state.tick = window.setInterval(function () {
+      if (!state.playing || state.paused) return;
+      var elapsed = (Date.now() - state.startTs - state.pausedTotal) / 1000;
+      elTcNow.textContent = mmss(elapsed);
+      setMeter(state.estTotal > 0 ? elapsed / state.estTotal : 0);
+    }, 120);
+  }
+
+  function stopTicker() {
+    if (state.tick) { window.clearInterval(state.tick); state.tick = null; }
+  }
+
+  /* 데스크톱 Chrome/Edge의 15초 끊김 방지 (모바일에서는 역효과라 제외) */
+  var needKeepAlive = /Chrome|Edg/.test(navigator.userAgent) && !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  function startKeepAlive() {
+    stopKeepAlive();
+    if (!needKeepAlive) return;
+    state.keepAlive = window.setInterval(function () {
+      if (state.playing && !state.paused && synth.speaking) {
+        try { synth.pause(); synth.resume(); } catch (e) { /* 무시 */ }
+      }
+    }, 9000);
+  }
+  function stopKeepAlive() {
+    if (state.keepAlive) { window.clearInterval(state.keepAlive); state.keepAlive = null; }
+  }
+
+  function pause() {
+    if (!state.playing || state.paused) return;
+    try { synth.pause(); } catch (e) { /* 무시 */ }
+    state.paused = true;
+    state.pausedAt = Date.now();
+    elPause.textContent = '이어서';
+    elPlay.textContent = '재생';
+    setLamp('ready');
+    setStatus('일시정지했습니다.', 'warn');
+  }
+
+  function resume() {
+    if (!state.playing || !state.paused) return;
+    try { synth.resume(); } catch (e) { /* 무시 */ }
+    state.pausedTotal += Date.now() - state.pausedAt;
+    state.paused = false;
+    elPause.textContent = '일시정지';
+    elPlay.textContent = '재생 중';
+    setLamp('live');
+    setStatus('송출을 이어 갑니다.', 'ok');
+  }
+
+  function stopSpeech() {
+    if (state.current) { state.current.onend = null; state.current.onerror = null; state.current = null; }
+    try { synth.cancel(); } catch (e) { /* 무시 */ }
+  }
+
+  function finish() {
+    state.playing = false;
+    state.paused = false;
+    stopTicker();
+    stopKeepAlive();
+    stopSpeech();
+    state.segments = [];
+    state.segIndex = 0;
+    setMeter(1);
+    elPlay.textContent = '재생';
+    elPlay.disabled = false;
+    elPause.textContent = '일시정지';
+    elPause.disabled = true;
+    elStop.disabled = true;
+    setLamp(state.selected ? 'ready' : 'standby');
+    setStatus('송출을 마쳤습니다.', 'ok');
+    window.setTimeout(function () { if (!state.playing) { setMeter(0); elTcNow.textContent = '00:00'; } }, 900);
+  }
+
+  function stop(silent) {
+    var wasPlaying = state.playing;
+    state.playing = false;
+    state.paused = false;
+    stopTicker();
+    stopKeepAlive();
+    stopSpeech();
+    state.segments = [];
+    state.segIndex = 0;
+    setMeter(0);
+    elTcNow.textContent = '00:00';
+    elPlay.textContent = '재생';
+    elPlay.disabled = false;
+    elPause.textContent = '일시정지';
+    elPause.disabled = true;
+    elStop.disabled = true;
+    setLamp(state.selected ? 'ready' : 'standby');
+    if (wasPlaying && !silent) setStatus('송출을 정지했습니다.', 'warn');
+  }
+
+  /* ═══════════════════════════════════════════
+     8. 목록 표
+     ═══════════════════════════════════════════ */
+  function currentList() {
+    var q = normCmp(elFilter.value);
+    if (!q) return state.rows;
+    var out = [], i, r;
+    for (i = 0; i < state.rows.length; i++) {
+      r = state.rows[i];
+      if (normCmp(r.spot).indexOf(q) !== -1 || normCmp(r.audio).indexOf(q) !== -1 ||
+          normCmp(r.id).indexOf(q) !== -1 || normCmp(r.script).indexOf(q) !== -1) out.push(r);
+    }
+    return out;
+  }
+
+  function renderTable() {
+    var list = currentList();
+    state.filtered = list;
+    elListCount.textContent = list.length + '건' + (list.length > MAX_RENDER ? ' (상위 ' + MAX_RENDER + '건 표시)' : '');
+    elTbody.textContent = '';
+
+    if (!list.length) {
+      var tr0 = document.createElement('tr');
+      var td0 = document.createElement('td');
+      td0.colSpan = 6;
+      td0.className = 'empty-note';
+      td0.textContent = state.rows.length ? '검색 결과가 없습니다.' : '불러온 대본이 없습니다. 엑셀 파일을 올려 주세요.';
+      tr0.appendChild(td0);
+      elTbody.appendChild(tr0);
+      return;
+    }
+
+    var frag = document.createDocumentFragment();
+    var n = Math.min(list.length, MAX_RENDER), i;
+    for (i = 0; i < n; i++) {
+      var r = list[i];
+      var tr = document.createElement('tr');
+      tr.tabIndex = 0;
+      tr.dataset.idx = String(r._i);
+
+      var tdId = document.createElement('td'); tdId.className = 'c-id'; tdId.textContent = r.id || '—';
+      var tdSpot = document.createElement('td'); tdSpot.textContent = r.spot || '—';
+      var tdAudio = document.createElement('td'); tdAudio.textContent = r.audio || '—';
+
+      var tdLang = document.createElement('td');
+      var tag = document.createElement('span');
+      tag.className = 'lang-tag';
+      tag.textContent = (LANG_NAME[r.lang] || r.lang);
+      tdLang.appendChild(tag);
+
+      var tdScript = document.createElement('td');
+      tdScript.className = 'c-script';
+      var clip = document.createElement('span');
+      clip.className = 'td-clip';
+      clip.textContent = r.script;
+      clip.title = r.script.slice(0, 300);
+      tdScript.appendChild(clip);
+
+      var tdDur = document.createElement('td');
+      tdDur.className = 'c-dur';
+      tdDur.textContent = r.dur > 0 ? mmss(r.dur) : '—';
+
+      tr.appendChild(tdId); tr.appendChild(tdSpot); tr.appendChild(tdAudio);
+      tr.appendChild(tdLang); tr.appendChild(tdScript); tr.appendChild(tdDur);
+      frag.appendChild(tr);
+    }
+    elTbody.appendChild(frag);
+    markTableSelection();
+  }
+
+  function markTableSelection() {
+    var trs = elTbody.getElementsByTagName('tr'), i, idx;
+    var selIdx = state.selected ? state.selected._i : -1;
+    for (i = 0; i < trs.length; i++) {
+      idx = parseInt(trs[i].dataset.idx, 10);
+      if (idx === selIdx && selIdx >= 0) trs[i].classList.add('sel');
+      else trs[i].classList.remove('sel');
+    }
+  }
+
+  function pickFromRow(tr) {
+    var idx = parseInt(tr.dataset.idx, 10);
+    if (isNaN(idx) || !state.rows[idx]) return;
+    var r = state.rows[idx];
+    elSpot.value = r.spot;
+    buildAudioList();
+    elAudio.value = r.audio;
+    select(r);
+  }
+
+  /* ═══════════════════════════════════════════
+     9. 이벤트
+     ═══════════════════════════════════════════ */
+  elDrop.addEventListener('click', function () { elFile.click(); });
+  elDrop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elFile.click(); }
+  });
+  elFile.addEventListener('change', function () {
+    if (this.files && this.files[0]) loadFile(this.files[0]);
+    this.value = '';
+  });
+  ['dragenter', 'dragover'].forEach(function (t) {
+    elDrop.addEventListener(t, function (e) { e.preventDefault(); e.stopPropagation(); elDrop.classList.add('is-over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (t) {
+    elDrop.addEventListener(t, function (e) { e.preventDefault(); e.stopPropagation(); elDrop.classList.remove('is-over'); });
+  });
+  elDrop.addEventListener('drop', function (e) {
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files[0]) loadFile(dt.files[0]);
+  });
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); });
+
+  elSpot.addEventListener('input', function () { buildAudioList(); trySelect(true); });
+  elSpot.addEventListener('change', function () { buildAudioList(); trySelect(); });
+  elAudio.addEventListener('input', function () { trySelect(true); });
+  elAudio.addEventListener('change', function () { trySelect(); });
+  elAudio.addEventListener('keydown', function (e) { if (e.key === 'Enter') { trySelect(); play(); } });
+  elSpot.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); elAudio.focus(); } });
+
+  elLang.addEventListener('change', function () {
+    syncVoiceOptions(currentLangHint());
+    updateEstimate();
+  });
+  elVoice.addEventListener('change', function () { state.manualVoice = this.value; });
+
+  elRate.addEventListener('input', function () {
+    elValRate.textContent = (parseFloat(this.value)).toFixed(2) + 'x';
+    updateEstimate();
+  });
+  elPitch.addEventListener('input', function () { elValPitch.textContent = (parseFloat(this.value)).toFixed(2); });
+  elVol.addEventListener('input', function () { elValVol.textContent = Math.round(parseFloat(this.value) * 100) + '%'; });
+  elFit.addEventListener('change', function () {
+    elRate.disabled = this.checked;
+    updateEstimate();
+  });
+
+  elPlay.addEventListener('click', function () { unlockAudio(); play(); });
+  elPause.addEventListener('click', function () { state.paused ? resume() : pause(); });
+  elStop.addEventListener('click', function () { stop(); });
+
+  var filterTimer = null;
+  elFilter.addEventListener('input', function () {
+    if (filterTimer) window.clearTimeout(filterTimer);
+    filterTimer = window.setTimeout(function () { renderTable(); filterTimer = null; }, 160);
+  });
+  $('btnClearFilter').addEventListener('click', function () { elFilter.value = ''; renderTable(); elFilter.focus(); });
+
+  elTbody.addEventListener('click', function (e) {
+    var tr = e.target.closest ? e.target.closest('tr') : null;
+    if (tr && tr.dataset.idx !== undefined) pickFromRow(tr);
+  });
+  elTbody.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var tr = e.target.closest ? e.target.closest('tr') : null;
+    if (tr && tr.dataset.idx !== undefined) { e.preventDefault(); pickFromRow(tr); }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.code === 'Space') { e.preventDefault(); unlockAudio(); state.playing ? (state.paused ? resume() : pause()) : play(); }
+    if (e.key === 'Escape') stop();
+  });
+
+  /* 양식 내려받기 (BOM 포함 CSV — 엑셀에서 한글이 깨지지 않음) */
+  $('btnTemplate').addEventListener('click', function () {
+    var rows = [
+      ['스팟아이디', '스팟명', '오디오명', '대본내용', '재생시간(초)'],
+      ['SP001', '개장안내', '개장안내_KO', '안녕하십니까. 잠시 후 아홉 시에 개장합니다. 즐거운 시간 보내시기 바랍니다.', '12'],
+      ['SP002', '개장안내', '개장안내_EN', 'Good morning. The park will open at nine. We hope you enjoy your visit.', '11'],
+      ['SP003', '개장안내', '개장안내_ZH', '各位来宾您好。本园将于九点开放，祝您玩得愉快。', '10'],
+      ['SP004', '개장안내', '개장안내_JA', 'おはようございます。当施設は九時に開場いたします。ごゆっくりお楽しみください。', '12'],
+      ['SP005', '폐장안내', '폐장안내_KO', '오늘 영업이 곧 종료됩니다. 안전하게 귀가하시기 바랍니다.', '9']
+    ];
+    var csv = rows.map(function (r) {
+      return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
+    }).join('\r\n');
+
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '스팟대본_양식.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.setTimeout(function () { URL.revokeObjectURL(url); }, 1500);   // 객체 URL 회수
+    setStatus('양식을 내려받았습니다. 내용을 채워 다시 올려 주세요.', 'ok');
+  });
+
+  /* 페이지를 벗어날 때 음성 정리 (백그라운드 잔류 방지) */
+  window.addEventListener('pagehide', function () { stopTicker(); stopKeepAlive(); stopSpeech(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && state.playing && !state.paused && /iPhone|iPad|Android/i.test(navigator.userAgent)) pause();
+  });
+
+  /* ═══════════════════════════════════════════
+     10. 초기화
+     ═══════════════════════════════════════════ */
+  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+    setStatus('이 브라우저는 음성 합성을 지원하지 않습니다. Chrome, Edge, Safari 최신 버전을 사용하세요.', 'err');
+    elPlay.disabled = true;
+  } else {
+    if (synth.onvoiceschanged !== undefined) {
+      synth.onvoiceschanged = function () { loadVoices(); };
+    }
+    var tries = 0;
+    var poll = window.setInterval(function () {
+      tries++;
+      if (loadVoices() || tries > 20) window.clearInterval(poll);
+    }, 220);
+    loadVoices();
+  }
+
+  elValRate.textContent = '1.00x';
+  elValPitch.textContent = '1.00';
+  elValVol.textContent = '100%';
+  setLamp('standby');
+  renderTable();
+})();
+</script>
+</body>
+</html>
