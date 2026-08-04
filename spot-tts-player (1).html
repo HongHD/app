@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#0B1A33">
+<title>스팟 방송 TTS 플레이어</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+  /* ===== 디자인 토큰 ===== */
+  :root{
+    --bg:#08152B;
+    --panel:#0F2242;
+    --panel-2:#16304F;
+    --line:#23446E;
+    --ink:#EAF1FA;
+    --ink-dim:#93AECB;
+    --ink-mute:#6A87A8;
+    --live:#FFB020;
+    --live-soft:rgba(255,176,32,.14);
+    --cyan:#38BDF8;
+    --ok:#34D399;
+    --danger:#FB7185;
+    --radius:14px;
+    --shadow:0 18px 44px rgba(0,0,0,.42);
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"D2Coding","Nanum Gothic Coding",monospace;
+    --sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 12% -10%, #12325C 0%, transparent 60%),
+      radial-gradient(900px 500px at 110% 0%, #10294B 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.6;
+    -webkit-text-size-adjust:100%;
+    -webkit-font-smoothing:antialiased;
+    word-break:keep-all;
+    min-height:100vh;
+    padding:0 0 calc(28px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+
+  /* ===== 콘솔 헤더 ===== */
+  header.console{
+    position:sticky;top:0;z-index:30;
+    background:linear-gradient(180deg,rgba(8,21,43,.97) 0%,rgba(8,21,43,.88) 100%);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+    padding-top:env(safe-area-inset-top);
+  }
+  .console-in{display:flex;align-items:center;gap:14px;padding:12px 0;flex-wrap:wrap}
+  .brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+  .brand h1{
+    margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;
+  }
+  .brand span{font-family:var(--mono);font-size:11px;color:var(--ink-mute);letter-spacing:.14em}
+  .onair{
+    margin-left:auto;display:flex;align-items:center;gap:9px;
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.2em;font-weight:700;
+    padding:7px 13px;border-radius:999px;
+    border:1px solid var(--line);color:var(--ink-mute);background:rgba(255,255,255,.02);
+    transition:color .25s,border-color .25s,background .25s;
+    white-space:nowrap;
+  }
+  .onair .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-mute);flex:none}
+  body.live .onair{color:var(--live);border-color:rgba(255,176,32,.55);background:var(--live-soft)}
+  body.live .onair .dot{background:var(--live);animation:pulse 1.15s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(255,176,32,.55)}50%{opacity:.55;box-shadow:0 0 0 7px rgba(255,176,32,0)}}
+
+  /* ===== 카드 ===== */
+  .grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:18px;margin-top:18px;align-items:start}
+  .card{
+    background:linear-gradient(180deg,var(--panel) 0%,#0C1D39 100%);
+    border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:18px;
+  }
+  .card + .card{margin-top:18px}
+  .card h2{
+    margin:0 0 14px;font-size:12px;font-weight:700;color:var(--ink-dim);
+    letter-spacing:.16em;font-family:var(--mono);text-transform:uppercase;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card h2::before{content:"";width:16px;height:2px;background:var(--cyan);border-radius:2px;flex:none}
+
+  /* ===== 업로드 ===== */
+  .drop{
+    border:1.5px dashed var(--line);border-radius:12px;padding:22px 16px;text-align:center;
+    cursor:pointer;transition:border-color .2s,background .2s;background:rgba(56,189,248,.03);
+  }
+  .drop:hover,.drop.over{border-color:var(--cyan);background:rgba(56,189,248,.09)}
+  .drop:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+  .drop .ic{font-size:26px;line-height:1}
+  .drop p{margin:8px 0 3px;font-size:14px;font-weight:600}
+  .drop small{color:var(--ink-mute);font-size:12px}
+  input[type=file]{display:none}
+
+  .filemeta{
+    margin-top:12px;display:none;align-items:center;gap:10px;padding:10px 12px;
+    background:rgba(52,211,153,.09);border:1px solid rgba(52,211,153,.3);border-radius:10px;font-size:13px;
+  }
+  .filemeta.show{display:flex}
+  .filemeta strong{color:var(--ok);font-family:var(--mono);font-size:12px;flex:none}
+  .filemeta span{color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ===== 폼 ===== */
+  .field{margin-top:14px}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-dim);margin-bottom:6px}
+  input[type=text],select{
+    width:100%;padding:11px 12px;font-size:15px;font-family:var(--sans);color:var(--ink);
+    background:#0A1B33;border:1px solid var(--line);border-radius:10px;
+    transition:border-color .18s,box-shadow .18s;
+  }
+  select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink-mute) 50%),linear-gradient(135deg,var(--ink-mute) 50%,transparent 50%);
+    background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
+  input[type=text]:focus,select:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,189,248,.18)}
+  input::placeholder{color:var(--ink-mute)}
+
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    padding:12px 16px;border-radius:11px;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink);font-family:var(--sans);font-size:14.5px;font-weight:700;
+    cursor:pointer;transition:transform .12s,background .18s,border-color .18s,opacity .18s;
+    min-height:46px;-webkit-tap-highlight-color:transparent;
+  }
+  .btn:hover:not(:disabled){background:#1B3A61;border-color:#2E5580}
+  .btn:active:not(:disabled){transform:scale(.98)}
+  .btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+  .btn:disabled{opacity:.38;cursor:not-allowed}
+  .btn-live{background:var(--live);border-color:var(--live);color:#22160A;flex:1}
+  .btn-live:hover:not(:disabled){background:#FFC24A;border-color:#FFC24A}
+  .btn-sm{padding:8px 12px;font-size:13px;min-height:38px;font-weight:600}
+
+  /* ===== 대본 ===== */
+  .spotline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .tag{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;padding:4px 9px;border-radius:6px;
+    background:rgba(56,189,248,.12);color:var(--cyan);border:1px solid rgba(56,189,248,.3);
+  }
+  .tag.amber{background:var(--live-soft);color:var(--live);border-color:rgba(255,176,32,.32)}
+  .tag.plain{background:rgba(255,255,255,.04);color:var(--ink-dim);border-color:var(--line)}
+
+  .script{
+    background:#091A31;border:1px solid var(--line);border-left:3px solid var(--cyan);
+    border-radius:10px;padding:16px 16px;font-size:16.5px;line-height:1.95;letter-spacing:-.005em;
+    max-height:290px;overflow-y:auto;white-space:pre-wrap;word-break:keep-all;overflow-wrap:break-word;
+    scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+  }
+  .script::-webkit-scrollbar{width:8px}
+  .script::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  .script.empty{color:var(--ink-mute);font-size:14.5px;line-height:1.7;border-left-color:var(--line)}
+  .script mark{background:rgba(255,176,32,.22);color:#FFD98A;border-radius:3px;padding:1px 0}
+
+  /* ===== 트랜스포트 ===== */
+  .transport{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+  .meter{display:flex;align-items:center;gap:3px;height:26px;margin-bottom:12px}
+  .meter i{flex:1;height:4px;border-radius:2px;background:var(--line);transform-origin:center;transition:background .2s}
+  body.live .meter i{background:var(--cyan);animation:bar .7s ease-in-out infinite alternate}
+  body.live.paused .meter i{animation-play-state:paused;background:var(--ink-mute)}
+  @keyframes bar{from{height:4px;opacity:.45}to{height:22px;opacity:1}}
+  .meter i:nth-child(2n){animation-duration:.52s}
+  .meter i:nth-child(3n){animation-duration:.86s}
+  .meter i:nth-child(5n){animation-duration:.64s}
+
+  .progress{height:6px;background:#0A1B33;border-radius:3px;overflow:hidden;border:1px solid var(--line)}
+  .progress b{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--live));border-radius:3px;transition:width .25s linear}
+  .times{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin-top:7px}
+  .controls{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
+
+  details.adv{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  details.adv summary{cursor:pointer;font-size:12.5px;color:var(--ink-dim);font-weight:600;list-style:none;display:flex;align-items:center;gap:6px}
+  details.adv summary::-webkit-details-marker{display:none}
+  details.adv summary::before{content:"▸";transition:transform .2s;display:inline-block;color:var(--cyan)}
+  details.adv[open] summary::before{transform:rotate(90deg)}
+  .sliders{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .slider label{display:flex;justify-content:space-between;font-size:12px}
+  .slider label b{font-family:var(--mono);color:var(--cyan);font-weight:600}
+  input[type=range]{width:100%;accent-color:var(--cyan);height:26px;cursor:pointer}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--ink-dim);cursor:pointer}
+  .chk input{width:17px;height:17px;accent-color:var(--cyan)}
+
+  /* ===== 목록 ===== */
+  .listhead{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .listhead input{flex:1;min-width:160px}
+  .count{font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);white-space:nowrap}
+  .tablewrap{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:10px;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{
+    position:sticky;top:0;background:#123059;color:var(--ink-dim);text-align:left;
+    font-size:11px;font-family:var(--mono);letter-spacing:.1em;padding:9px 11px;font-weight:700;z-index:1;
+    border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  tbody td{padding:10px 11px;border-bottom:1px solid rgba(35,68,110,.55);vertical-align:middle}
+  tbody tr{cursor:pointer;transition:background .14s}
+  tbody tr:hover{background:rgba(56,189,248,.08)}
+  tbody tr.sel{background:rgba(255,176,32,.11);box-shadow:inset 3px 0 0 var(--live)}
+  td.id,td.sec{font-family:var(--mono);font-size:12px;color:var(--ink-dim);white-space:nowrap}
+  td.nm{font-weight:600}
+  td.pv{color:var(--ink-mute);font-size:12.5px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .msg{margin-top:12px;padding:11px 13px;border-radius:10px;font-size:13px;display:none;line-height:1.6}
+  .msg.show{display:block}
+  .msg.warn{background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.35);color:#FFC5CD}
+  .msg.info{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.3);color:#BFE6FB}
+
+  .empty-state{text-align:center;padding:34px 12px;color:var(--ink-mute);font-size:13.5px}
+  .empty-state .ic{font-size:30px;opacity:.5;display:block;margin-bottom:8px}
+  footer{margin-top:22px;text-align:center;font-size:11.5px;color:var(--ink-mute);font-family:var(--mono);letter-spacing:.06em}
+
+  @media (max-width:900px){
+    .grid{grid-template-columns:1fr;gap:14px}
+    .card{padding:15px}
+    .brand h1{font-size:17px}
+    .sliders{grid-template-columns:1fr}
+    .script{font-size:17px;max-height:230px}
+    .controls .btn{flex:1 1 calc(50% - 5px)}
+    .btn-live{flex:1 1 100%}
+    .tablewrap{max-height:290px}
+    td.pv,th.pv{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<header class="console">
+  <div class="wrap console-in">
+    <div class="brand">
+      <h1>스팟 방송 TTS 플레이어</h1>
+      <span>KO-TTS CONSOLE</span>
+    </div>
+    <div class="onair" id="onair" role="status" aria-live="polite">
+      <i class="dot"></i><span id="onairText">대기</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- 좌측: 소스 & 선택 -->
+    <div>
+      <section class="card">
+        <h2>대본 파일</h2>
+        <div class="drop" id="drop" role="button" tabindex="0" aria-label="엑셀 파일 선택">
+          <div class="ic">📄</div>
+          <p>엑셀 파일 선택 또는 끌어놓기</p>
+          <small>.xlsx / .xls / .csv · 최대 20MB</small>
+        </div>
+        <input type="file" id="file" accept=".xlsx,.xls,.csv" aria-hidden="true" tabindex="-1">
+        <div class="filemeta" id="filemeta"><strong id="fmCount">0건</strong><span id="fmName"></span></div>
+        <div class="msg" id="fileMsg" role="alert"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" id="btnSample" type="button">양식 내려받기</button>
+          <button class="btn btn-sm" id="btnReset" type="button">초기화</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>스팟 선택</h2>
+        <div class="field">
+          <label for="inSpot">스팟명</label>
+          <input type="text" id="inSpot" list="dlSpot" placeholder="예) 로비 안내" autocomplete="off" enterkeyhint="next" maxlength="200">
+          <datalist id="dlSpot"></datalist>
+        </div>
+        <div class="field">
+          <label for="inAudio">오디오명</label>
+          <input type="text" id="inAudio" list="dlAudio" placeholder="예) 개장 안내 01" autocomplete="off" enterkeyhint="go" maxlength="200">
+          <datalist id="dlAudio"></datalist>
+        </div>
+        <div class="field">
+          <label for="selVoice">한국어 음성</label>
+          <select id="selVoice" aria-label="한국어 음성 선택"><option>불러오는 중…</option></select>
+        </div>
+        <div class="msg" id="selMsg" role="alert"></div>
+      </section>
+    </div>
+
+    <!-- 우측: 대본 & 트랜스포트 -->
+    <div>
+      <section class="card">
+        <h2>대본 · 송출</h2>
+        <div class="spotline" id="spotline">
+          <span class="tag plain">스팟아이디 —</span>
+          <span class="tag plain">재생시간 —</span>
+        </div>
+        <div class="script empty" id="script" aria-live="polite">
+          엑셀 파일을 올린 뒤 스팟명과 오디오명을 입력하면 이 자리에 대본이 표시됩니다.
+        </div>
+
+        <div class="transport">
+          <div class="meter" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="progress"><b id="bar"></b></div>
+          <div class="times"><span id="tCur">00:00</span><span id="tTot">00:00</span></div>
+          <div class="controls">
+            <button class="btn btn-live" id="btnPlay" type="button" disabled>▶ 재생</button>
+            <button class="btn" id="btnPause" type="button" disabled>‖ 일시정지</button>
+            <button class="btn" id="btnStop" type="button" disabled>■ 정지</button>
+          </div>
+
+          <details class="adv">
+            <summary>음성 조정</summary>
+            <div class="sliders">
+              <div class="slider">
+                <label for="rgRate">말하기 속도 <b id="vRate">1.00</b></label>
+                <input type="range" id="rgRate" min="0.5" max="2" step="0.05" value="1">
+              </div>
+              <div class="slider">
+                <label for="rgPitch">음 높이 <b id="vPitch">1.00</b></label>
+                <input type="range" id="rgPitch" min="0.5" max="1.6" step="0.05" value="1">
+              </div>
+              <div class="slider">
+                <label for="rgVol">음량 <b id="vVol">1.00</b></label>
+                <input type="range" id="rgVol" min="0" max="1" step="0.05" value="1">
+              </div>
+              <div class="slider">
+                <label for="rgGap">문장 간격 <b id="vGap">0.20초</b></label>
+                <input type="range" id="rgGap" min="0" max="1.5" step="0.05" value="0.2">
+              </div>
+            </div>
+            <label class="chk" for="ckFit">
+              <input type="checkbox" id="ckFit" checked>
+              엑셀의 재생시간(초)에 맞춰 속도 자동 조정
+            </label>
+          </details>
+        </div>
+        <div class="msg" id="playMsg" role="alert"></div>
+      </section>
+
+      <section class="card">
+        <h2>대본 목록</h2>
+        <div class="listhead">
+          <input type="text" id="inFilter" placeholder="스팟명 · 오디오명 · 대본 내용 검색" autocomplete="off" maxlength="100">
+          <span class="count" id="cnt">0 / 0</span>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr>
+              <th style="width:96px">스팟아이디</th><th>스팟명</th><th>오디오명</th>
+              <th class="pv">대본</th><th style="width:64px">초</th>
+            </tr></thead>
+            <tbody id="tbody">
+              <tr><td colspan="5"><div class="empty-state"><span class="ic">🎙️</span>업로드된 대본이 없습니다.</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer>순수 HTML · JavaScript · Web Speech API (ko-KR)</footer>
+</div>
+
+<script>
+"use strict";
+(function () {
+  /* ========================================================================
+     0. 유틸
+     ======================================================================== */
+  var $ = function (id) { return document.getElementById(id); };
+  var synth = window.speechSynthesis;
+
+  var MAX_BYTES = 20 * 1024 * 1024;
+  var MAX_ROWS = 20000;          // 과대 파일 방어
+  var MAX_SCRIPT_LEN = 8000;     // 대본 1건 최대 길이
+  var RENDER_LIMIT = 300;        // 목록 1회 렌더 상한(성능)
+  var CHUNK_LEN = 160;           // TTS 분할 길이(엔진 끊김 방지)
+  var CPS_BASE = 5.2;            // 한국어 기준 초당 글자수(rate 1.0)
+
+  function norm(v) {
+    return String(v == null ? "" : v).replace(/\s+/g, " ").trim();
+  }
+  function key(v) {
+    return norm(v).toLowerCase().replace(/\s/g, "");
+  }
+  function mmss(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function show(el, type, text) {
+    el.className = "msg show " + type;
+    el.textContent = text;           // XSS 방어: textContent만 사용
+  }
+  function hide(el) { el.className = "msg"; el.textContent = ""; }
+
+  /* ========================================================================
+     1. 상태
+     ======================================================================== */
+  var state = {
+    rows: [],            // {id, spot, audio, script, sec}
+    bySpot: new Map(),   // key(spot) -> [row]
+    byPair: new Map(),   // key(spot)+"\u0001"+key(audio) -> row
+    current: null,
+    filtered: []
+  };
+
+  var player = {
+    chunks: [], idx: 0, offsets: [], total: 0,
+    playing: false, paused: false,
+    utter: null,                 // GC 방지용 참조 유지
+    timer: null, gapTimer: null, startAt: 0, elapsedBefore: 0,
+    estSec: 0, keepAlive: null, wakeLock: null
+  };
+
+  /* ========================================================================
+     2. 엑셀 파싱
+     ======================================================================== */
+  var HEAD = {
+    id:    ["스팟아이디", "스팟ID", "스팟id", "spotid", "id", "아이디"],
+    spot:  ["스팟명", "스팟이름", "spotname", "spot", "스팟"],
+    audio: ["오디오명", "오디오이름", "audioname", "audio", "오디오", "파일명"],
+    script:["대본내용", "대본", "내용", "스크립트", "script", "text", "멘트"],
+    sec:   ["재생시간초", "재생시간", "재생초", "duration", "sec", "seconds", "시간"]
+  };
+
+  function matchHead(cell) {
+    var k = key(cell).replace(/[()\[\]{}\-_/.,:]/g, "");
+    if (!k) return null;
+    for (var f in HEAD) {
+      if (!Object.prototype.hasOwnProperty.call(HEAD, f)) continue;
+      for (var i = 0; i < HEAD[f].length; i++) {
+        var h = HEAD[f][i].toLowerCase().replace(/[()\s]/g, "");
+        if (k === h || k.indexOf(h) === 0) return f;
+      }
+    }
+    return null;
+  }
+
+  function findHeaderRow(aoa) {
+    var limit = Math.min(aoa.length, 30);
+    for (var r = 0; r < limit; r++) {
+      var row = aoa[r] || [], map = {}, hit = 0;
+      for (var c = 0; c < row.length; c++) {
+        var f = matchHead(row[c]);
+        if (f && map[f] === undefined) { map[f] = c; hit++; }
+      }
+      if (map.script !== undefined && (map.spot !== undefined || map.audio !== undefined)) {
+        return { row: r, map: map, hit: hit };
+      }
+    }
+    return null;
+  }
+
+  function toSec(v) {
+    if (typeof v === "number" && isFinite(v)) return Math.round(v);
+    var s = norm(v);
+    if (!s) return 0;
+    var mm = s.match(/^(\d{1,2}):(\d{1,2})$/);           // 1:30 형식
+    if (mm) return parseInt(mm[1], 10) * 60 + parseInt(mm[2], 10);
+    var n = parseFloat(s.replace(/[^0-9.]/g, ""));
+    return isFinite(n) ? Math.round(n) : 0;
+  }
+
+  function buildRows(aoa, head) {
+    var m = head.map, out = [], seen = 0;
+    for (var r = head.row + 1; r < aoa.length && out.length < MAX_ROWS; r++) {
+      var row = aoa[r];
+      if (!row || !row.length) continue;
+      var script = norm(m.script !== undefined ? row[m.script] : "");
+      if (!script) continue;
+      if (script.length > MAX_SCRIPT_LEN) script = script.slice(0, MAX_SCRIPT_LEN);
+      seen++;
+      out.push({
+        id:     norm(m.id     !== undefined ? row[m.id]     : "") || ("R" + seen),
+        spot:   norm(m.spot   !== undefined ? row[m.spot]   : ""),
+        audio:  norm(m.audio  !== undefined ? row[m.audio]  : ""),
+        script: script,
+        sec:    toSec(m.sec !== undefined ? row[m.sec] : 0)
+      });
+    }
+    return out;
+  }
+
+  function indexRows(rows) {
+    var bySpot = new Map(), byPair = new Map();
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i], ks = key(r.spot);
+      var arr = bySpot.get(ks);
+      if (!arr) { arr = []; bySpot.set(ks, arr); }
+      arr.push(r);
+      var kp = ks + "\u0001" + key(r.audio);
+      if (!byPair.has(kp)) byPair.set(kp, r);
+    }
+    state.bySpot = bySpot;
+    state.byPair = byPair;
+  }
+
+  function readFile(file) {
+    hide($("fileMsg"));
+    if (!file) return;
+    if (file.size > MAX_BYTES) {
+      show($("fileMsg"), "warn", "파일이 20MB를 넘습니다. 더 작은 파일로 나눠서 올려 주세요.");
+      return;
+    }
+    if (typeof XLSX === "undefined") {
+      show($("fileMsg"), "warn", "엑셀 해석 모듈을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 새로고침해 주세요.");
+      return;
+    }
+    var reader = new FileReader();
+    reader.onerror = function () {
+      show($("fileMsg"), "warn", "파일을 읽지 못했습니다. 다른 파일로 다시 시도해 주세요.");
+      reader.onload = reader.onerror = null;
+    };
+    reader.onload = function (e) {
+      try {
+        var buf = new Uint8Array(e.target.result);
+        var wb;
+        var isCsv = /\.csv$/i.test(file.name);
+        if (isCsv) {
+          // CSV 한글 인코딩 자동 판별 (UTF-8 → 실패 시 EUC-KR)
+          var text = decodeText(buf);
+          wb = XLSX.read(text, { type: "string", raw: false });
+        } else {
+          wb = XLSX.read(buf, { type: "array", cellDates: false });
+        }
+        var sheetsTried = 0, rows = [];
+        for (var si = 0; si < wb.SheetNames.length && !rows.length; si++) {
+          var ws = wb.Sheets[wb.SheetNames[si]];
+          if (!ws) continue;
+          sheetsTried++;
+          var aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", blankrows: false, raw: true });
+          var head = findHeaderRow(aoa);
+          if (head) rows = buildRows(aoa, head);
+        }
+        if (!rows.length) {
+          show($("fileMsg"), "warn", "‘스팟아이디 / 스팟명 / 오디오명 / 대본내용 / 재생시간(초)’ 머리글을 찾지 못했습니다. 양식 내려받기로 형식을 확인해 주세요.");
+          return;
+        }
+        applyRows(rows, file.name);
+      } catch (err) {
+        show($("fileMsg"), "warn", "엑셀을 해석하지 못했습니다. 파일이 손상되지 않았는지 확인해 주세요.");
+      } finally {
+        reader.onload = reader.onerror = null;   // 메모리 해제
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function decodeText(buf) {
+    var t;
+    try {
+      t = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+    } catch (e) { t = ""; }
+    if (t && t.indexOf("\uFFFD") === -1) return t;
+    try {
+      return new TextDecoder("euc-kr").decode(buf);   // 한글 CSV 대응
+    } catch (e2) { return t; }
+  }
+
+  function applyRows(rows, fname) {
+    stopAll();
+    state.rows = rows;
+    state.current = null;
+    indexRows(rows);
+
+    $("fmCount").textContent = rows.length.toLocaleString("ko-KR") + "건";
+    $("fmName").textContent = fname;
+    $("filemeta").classList.add("show");
+
+    fillDatalist($("dlSpot"), uniq(rows.map(function (r) { return r.spot; })));
+    $("inAudio").value = "";
+    $("inSpot").value = "";
+    fillDatalist($("dlAudio"), uniq(rows.map(function (r) { return r.audio; })));
+
+    renderScript(null);
+    applyFilter("");
+    show($("fileMsg"), "info", rows.length.toLocaleString("ko-KR") + "건을 불러왔습니다. 스팟명과 오디오명을 입력하거나 아래 목록에서 고르세요.");
+  }
+
+  function uniq(list) {
+    var seen = Object.create(null), out = [];
+    for (var i = 0; i < list.length; i++) {
+      var v = list[i];
+      if (!v || seen[v]) continue;
+      seen[v] = 1; out.push(v);
+      if (out.length >= 1000) break;   // datalist 성능 보호
+    }
+    return out;
+  }
+
+  function fillDatalist(dl, values) {
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < values.length; i++) {
+      var o = document.createElement("option");
+      o.value = values[i];
+      frag.appendChild(o);
+    }
+    dl.textContent = "";
+    dl.appendChild(frag);
+  }
+
+  /* ========================================================================
+     3. 선택 로직
+     ======================================================================== */
+  function resolveRow() {
+    var s = $("inSpot").value, a = $("inAudio").value;
+    var ks = key(s), ka = key(a);
+    if (!state.rows.length) return { row: null, msg: "먼저 엑셀 파일을 올려 주세요." };
+    if (!ks && !ka) return { row: null, msg: "" };
+
+    if (ks && ka) {
+      var exact = state.byPair.get(ks + "\u0001" + ka);
+      if (exact) return { row: exact, msg: "" };
+    }
+    var pool = ks ? (state.bySpot.get(ks) || null) : null;
+    if (!pool && ks) {
+      pool = state.rows.filter(function (r) { return key(r.spot).indexOf(ks) !== -1; });
+    }
+    if (!pool) pool = state.rows;
+    if (!pool.length) return { row: null, msg: "‘" + norm(s) + "’ 스팟명을 찾지 못했습니다." };
+
+    if (ka) {
+      var hit = pool.filter(function (r) { return key(r.audio) === ka; });
+      if (!hit.length) hit = pool.filter(function (r) { return key(r.audio).indexOf(ka) !== -1; });
+      if (hit.length === 1) return { row: hit[0], msg: "" };
+      if (hit.length > 1) return { row: hit[0], msg: hit.length + "건이 일치해 첫 번째 대본을 선택했습니다." };
+      return { row: null, msg: "‘" + norm(a) + "’ 오디오명을 찾지 못했습니다." };
+    }
+    if (pool.length === 1) return { row: pool[0], msg: "" };
+    return { row: null, msg: "오디오명을 입력하거나 아래 목록에서 골라 주세요. (" + pool.length + "건)" };
+  }
+
+  function syncAudioList() {
+    var ks = key($("inSpot").value);
+    var pool = ks ? (state.bySpot.get(ks) || state.rows.filter(function (r) {
+      return key(r.spot).indexOf(ks) !== -1;
+    })) : state.rows;
+    fillDatalist($("dlAudio"), uniq(pool.map(function (r) { return r.audio; })));
+  }
+
+  function updateSelection() {
+    var res = resolveRow();
+    if (res.msg) show($("selMsg"), res.row ? "info" : "warn", res.msg); else hide($("selMsg"));
+    if (res.row !== state.current) {
+      stopAll();
+      state.current = res.row;
+      renderScript(res.row);
+      markSelected();
+    }
+  }
+
+  function selectRow(row) {
+    stopAll();
+    state.current = row;
+    $("inSpot").value = row.spot;
+    $("inAudio").value = row.audio;
+    syncAudioList();
+    hide($("selMsg"));
+    renderScript(row);
+    markSelected();
+  }
+
+  /* ========================================================================
+     4. 렌더링
+     ======================================================================== */
+  function renderScript(row) {
+    var line = $("spotline"), sc = $("script");
+    line.textContent = "";
+    if (!row) {
+      line.appendChild(mkTag("스팟아이디 —", "plain"));
+      line.appendChild(mkTag("재생시간 —", "plain"));
+      sc.className = "script empty";
+      sc.textContent = "엑셀 파일을 올린 뒤 스팟명과 오디오명을 입력하면 이 자리에 대본이 표시됩니다.";
+      setControls(false);
+      $("tTot").textContent = "00:00";
+      $("tCur").textContent = "00:00";
+      $("bar").style.width = "0%";
+      return;
+    }
+    line.appendChild(mkTag(row.id, "amber"));
+    if (row.spot) line.appendChild(mkTag(row.spot, ""));
+    if (row.audio) line.appendChild(mkTag(row.audio, "plain"));
+    line.appendChild(mkTag(row.sec ? "목표 " + row.sec + "초" : "시간 미지정", "plain"));
+
+    sc.className = "script";
+    sc.textContent = row.script;
+    sc.scrollTop = 0;
+
+    var est = ($("ckFit").checked && row.sec) ? row.sec : estimateSec(row.script, currentRate(row));
+    player.estSec = est;
+    $("tTot").textContent = mmss(est);
+    $("tCur").textContent = "00:00";
+    $("bar").style.width = "0%";
+    setControls(true);
+  }
+
+  function mkTag(text, cls) {
+    var el = document.createElement("span");
+    el.className = "tag" + (cls ? " " + cls : "");
+    el.textContent = text;   // XSS 방어
+    return el;
+  }
+
+  function renderTable(list) {
+    var tb = $("tbody"), frag = document.createDocumentFragment();
+    var n = Math.min(list.length, RENDER_LIMIT);
+    if (!n) {
+      var tr0 = document.createElement("tr"), td0 = document.createElement("td");
+      td0.colSpan = 5;
+      var d = document.createElement("div");
+      d.className = "empty-state";
+      var ic = document.createElement("span"); ic.className = "ic"; ic.textContent = "🎙️";
+      d.appendChild(ic);
+      d.appendChild(document.createTextNode(state.rows.length ? "검색 결과가 없습니다." : "업로드된 대본이 없습니다."));
+      td0.appendChild(d); tr0.appendChild(td0); frag.appendChild(tr0);
+    }
+    for (var i = 0; i < n; i++) {
+      var r = list[i];
+      var tr = document.createElement("tr");
+      tr.dataset.i = String(i);
+      if (state.current === r) tr.className = "sel";
+      tr.appendChild(td(r.id, "id"));
+      tr.appendChild(td(r.spot, "nm"));
+      tr.appendChild(td(r.audio, ""));
+      tr.appendChild(td(r.script.length > 120 ? r.script.slice(0, 120) + "…" : r.script, "pv"));
+      tr.appendChild(td(r.sec ? String(r.sec) : "—", "sec"));
+      frag.appendChild(tr);
+    }
+    tb.textContent = "";
+    tb.appendChild(frag);
+    $("cnt").textContent = n.toLocaleString("ko-KR") + " / " + state.rows.length.toLocaleString("ko-KR") +
+      (list.length > RENDER_LIMIT ? " (상위 " + RENDER_LIMIT + "건 표시)" : "");
+  }
+
+  function td(text, cls) {
+    var el = document.createElement("td");
+    if (cls) el.className = cls;
+    el.textContent = text || "—";
+    return el;
+  }
+
+  function markSelected() {
+    var tb = $("tbody"), trs = tb.children;
+    for (var i = 0; i < trs.length; i++) {
+      var idx = trs[i].dataset ? trs[i].dataset.i : null;
+      if (idx == null) continue;
+      var r = state.filtered[+idx];
+      trs[i].className = (r && r === state.current) ? "sel" : "";
+    }
+  }
+
+  function applyFilter(q) {
+    var k = key(q);
+    state.filtered = !k ? state.rows.slice(0) : state.rows.filter(function (r) {
+      return key(r.spot).indexOf(k) !== -1 || key(r.audio).indexOf(k) !== -1 ||
+             key(r.id).indexOf(k) !== -1 || key(r.script).indexOf(k) !== -1;
+    });
+    renderTable(state.filtered);
+  }
+
+  /* ========================================================================
+     5. 음성(Voice) 준비 — 한국어 우선
+     ======================================================================== */
+  var voices = [];
+  function rankVoice(v) {
+    var n = (v.name || "").toLowerCase(), s = 0;
+    if (/^ko/i.test(v.lang || "")) s += 100;
+    if (n.indexOf("google") !== -1) s += 30;              // Google 한국의 (자연스러움)
+    if (/yuna|heami|sun-?hi|nara|jimin|seoyeon|injoon/.test(n)) s += 25;
+    if (n.indexOf("neural") !== -1 || n.indexOf("natural") !== -1) s += 20;
+    if (v.localService === false) s += 8;                 // 클라우드 음성이 대체로 고품질
+    return s;
+  }
+
+  function loadVoices() {
+    var all = synth.getVoices() || [];
+    var ko = all.filter(function (v) { return /^ko/i.test(v.lang || ""); });
+    voices = (ko.length ? ko : all).slice(0).sort(function (a, b) { return rankVoice(b) - rankVoice(a); });
+
+    var sel = $("selVoice"), frag = document.createDocumentFragment();
+    for (var i = 0; i < voices.length; i++) {
+      var o = document.createElement("option");
+      o.value = String(i);
+      o.textContent = voices[i].name + " (" + voices[i].lang + ")";
+      frag.appendChild(o);
+    }
+    sel.textContent = "";
+    if (!voices.length) {
+      var o2 = document.createElement("option");
+      o2.textContent = "사용 가능한 음성 없음";
+      sel.appendChild(o2);
+      sel.disabled = true;
+      show($("playMsg"), "warn", "이 기기에서 음성 목록을 찾지 못했습니다. 브라우저를 최신 버전으로 올리거나 시스템 설정에서 한국어 음성을 추가해 주세요.");
+      return;
+    }
+    sel.appendChild(frag);
+    sel.disabled = false;
+    sel.value = "0";
+    if (!ko.length) {
+      show($("playMsg"), "warn", "한국어(ko-KR) 음성이 설치돼 있지 않습니다. Android는 설정 → 언어 및 입력 → 음성 합성, iOS는 설정 → 손쉬운 사용 → 음성 콘텐츠에서 한국어를 추가하면 발음이 정확해집니다.");
+    } else {
+      hide($("playMsg"));
+    }
+  }
+
+  /* ========================================================================
+     6. TTS 재생 엔진
+     ======================================================================== */
+  var SENT_END = ".!?。！？…\n";
+  function splitSentences(text) {
+    // 정규식 lookbehind 미지원 브라우저(구형 iOS 사파리) 호환을 위해 직접 순회
+    var s = String(text), out = [], buf = "";
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i);
+      buf += ch;
+      if (SENT_END.indexOf(ch) !== -1) { out.push(buf); buf = ""; }
+    }
+    if (buf) out.push(buf);
+    return out;
+  }
+
+  function splitChunks(text) {
+    // 문장 부호 우선 → 길면 어절 단위로 재분할 (엔진 끊김/길이 제한 회피)
+    var parts = splitSentences(text);
+    var out = [], buf = "";
+    for (var i = 0; i < parts.length; i++) {
+      var p = norm(parts[i]);
+      if (!p) continue;
+      if (p.length > CHUNK_LEN) {
+        if (buf) { out.push(buf); buf = ""; }
+        var words = p.split(" "), line = "";
+        for (var w = 0; w < words.length; w++) {
+          if ((line + " " + words[w]).trim().length > CHUNK_LEN) { if (line) out.push(line); line = words[w]; }
+          else line = (line ? line + " " : "") + words[w];
+        }
+        if (line) out.push(line);
+      } else if ((buf + " " + p).trim().length > CHUNK_LEN) {
+        out.push(buf); buf = p;
+      } else {
+        buf = (buf ? buf + " " : "") + p;
+      }
+    }
+    if (buf) out.push(buf);
+    return out.length ? out : [String(text)];
+  }
+
+  function estimateSec(text, rate) {
+    var len = String(text).replace(/\s/g, "").length;
+    var gap = parseFloat($("rgGap").value) || 0;
+    var sentences = (String(text).match(/[.!?。！？\n]/g) || []).length;
+    return Math.max(1, Math.round(len / (CPS_BASE * (rate || 1)) + sentences * gap));
+  }
+
+  function currentRate(row) {
+    var base = parseFloat($("rgRate").value) || 1;
+    row = row || state.current;
+    if (!$("ckFit").checked || !row || !row.sec) return base;
+    var chars = row.script.replace(/\s/g, "").length;
+    var need = chars / CPS_BASE / row.sec;             // 목표 시간에 맞춘 배속
+    return Math.min(2, Math.max(0.6, Math.round(need * 20) / 20));
+  }
+
+  function setControls(hasRow) {
+    $("btnPlay").disabled = !hasRow;
+    $("btnPause").disabled = !player.playing;
+    $("btnStop").disabled = !player.playing;
+  }
+
+  function setLive(on, paused) {
+    document.body.classList.toggle("live", !!on);
+    document.body.classList.toggle("paused", !!paused);
+    $("onairText").textContent = on ? (paused ? "일시정지" : "송출 중") : "대기";
+  }
+
+  function play() {
+    if (!state.current) { updateSelection(); return; }
+    if (!synth) { show($("playMsg"), "warn", "이 브라우저는 음성 합성을 지원하지 않습니다. 크롬 또는 사파리 최신 버전을 사용해 주세요."); return; }
+    if (player.paused) { resume(); return; }
+
+    stopAll();
+    var row = state.current;
+    var rate = currentRate(row);
+    player.chunks = splitChunks(row.script);
+    player.offsets = [];
+    var acc = 0;
+    for (var i = 0; i < player.chunks.length; i++) { player.offsets.push(acc); acc += player.chunks[i].length; }
+    player.total = acc || 1;
+    player.idx = 0;
+    player.playing = true;
+    player.paused = false;
+    player.elapsedBefore = 0;
+    player.startAt = Date.now();
+    player.estSec = row.sec && $("ckFit").checked ? row.sec : estimateSec(row.script, rate);
+
+    $("tTot").textContent = mmss(player.estSec);
+    setLive(true, false);
+    $("btnPlay").textContent = "▶ 재생";
+    $("btnPause").disabled = false;
+    $("btnStop").disabled = false;
+    hide($("playMsg"));
+    requestWakeLock();
+    startTicker();
+    speakChunk(rate);
+  }
+
+  function speakChunk(rate) {
+    if (!player.playing || player.idx >= player.chunks.length) { finish(); return; }
+    var u = new SpeechSynthesisUtterance(player.chunks[player.idx]);
+    var v = voices[parseInt($("selVoice").value, 10)] || voices[0];
+    if (v) { u.voice = v; u.lang = v.lang || "ko-KR"; } else { u.lang = "ko-KR"; }
+    u.rate = rate;
+    u.pitch = parseFloat($("rgPitch").value) || 1;
+    u.volume = parseFloat($("rgVol").value);
+    if (isNaN(u.volume)) u.volume = 1;
+
+    u.onboundary = function (e) {
+      if (!player.playing || typeof e.charIndex !== "number") return;
+      var done = player.offsets[player.idx] + e.charIndex;
+      setProgress(done / player.total);
+    };
+    u.onend = function () {
+      if (!player.playing) return;
+      player.idx++;
+      var gap = (parseFloat($("rgGap").value) || 0) * 1000;
+      if (player.idx < player.chunks.length) {
+        if (gap > 0) { player.gapTimer = setTimeout(function () { speakChunk(rate); }, gap); }
+        else speakChunk(rate);
+      } else finish();
+    };
+    u.onerror = function (e) {
+      if (e && (e.error === "interrupted" || e.error === "canceled")) return;
+      show($("playMsg"), "warn", "재생 중 오류가 발생했습니다. 다시 재생을 눌러 주세요.");
+      stopAll();
+    };
+    player.utter = u;    // 참조 유지(브라우저 조기 수거 방지)
+    try { synth.speak(u); }
+    catch (err) { show($("playMsg"), "warn", "음성 재생을 시작하지 못했습니다. 화면을 한 번 터치한 뒤 다시 시도해 주세요."); stopAll(); }
+    startKeepAlive();
+  }
+
+  function setProgress(ratio) {
+    ratio = Math.max(0, Math.min(1, ratio || 0));
+    $("bar").style.width = (ratio * 100).toFixed(1) + "%";
+  }
+
+  function startTicker() {
+    stopTicker();
+    player.timer = setInterval(function () {
+      if (!player.playing || player.paused) return;
+      var el = player.elapsedBefore + (Date.now() - player.startAt) / 1000;
+      $("tCur").textContent = mmss(el);
+      if (player.estSec > 0) {
+        var w = parseFloat($("bar").style.width) || 0;
+        var byTime = (el / player.estSec) * 100;
+        if (byTime > w) setProgress(Math.min(0.99, el / player.estSec));   // boundary 미지원 대비
+      }
+    }, 250);
+  }
+  function stopTicker() { if (player.timer) { clearInterval(player.timer); player.timer = null; } }
+
+  // 데스크톱 크롬의 장문 중단 버그 회피
+  function startKeepAlive() {
+    stopKeepAlive();
+    player.keepAlive = setInterval(function () {
+      if (!player.playing || player.paused) return;
+      if (synth.speaking) { synth.pause(); synth.resume(); }
+    }, 9000);
+  }
+  function stopKeepAlive() { if (player.keepAlive) { clearInterval(player.keepAlive); player.keepAlive = null; } }
+
+  function pause() {
+    if (!player.playing || player.paused) return;
+    try { synth.pause(); } catch (e) {}
+    player.paused = true;
+    player.elapsedBefore += (Date.now() - player.startAt) / 1000;
+    setLive(true, true);
+    $("btnPlay").textContent = "▶ 이어서";
+    $("btnPause").textContent = "‖ 일시정지";
+  }
+
+  function resume() {
+    if (!player.playing || !player.paused) return;
+    player.paused = false;
+    player.startAt = Date.now();
+    try { synth.resume(); } catch (e) {}
+    setLive(true, false);
+    $("btnPlay").textContent = "▶ 재생";
+  }
+
+  function finish() {
+    setProgress(1);
+    $("tCur").textContent = $("tTot").textContent;
+    cleanupPlayback();
+    setLive(false, false);
+    setControls(!!state.current);
+  }
+
+  function stopAll() {
+    cleanupPlayback();
+    try { synth.cancel(); } catch (e) {}
+    setProgress(0);
+    $("tCur").textContent = "00:00";
+    setLive(false, false);
+    $("btnPlay").textContent = "▶ 재생";
+    setControls(!!state.current);
+  }
+
+  function cleanupPlayback() {
+    player.playing = false;
+    player.paused = false;
+    player.chunks = [];
+    player.offsets = [];
+    player.idx = 0;
+    if (player.gapTimer) { clearTimeout(player.gapTimer); player.gapTimer = null; }
+    if (player.utter) {
+      player.utter.onend = player.utter.onerror = player.utter.onboundary = null;   // 누수 방지
+      player.utter = null;
+    }
+    stopTicker();
+    stopKeepAlive();
+    releaseWakeLock();
+  }
+
+  // 재생 중 화면 꺼짐 방지(지원 기기에 한함)
+  function requestWakeLock() {
+    if (!("wakeLock" in navigator)) return;
+    try {
+      navigator.wakeLock.request("screen").then(function (lock) {
+        player.wakeLock = lock;
+        lock.addEventListener("release", function () { player.wakeLock = null; });
+      })["catch"](function () {});
+    } catch (e) {}
+  }
+  function releaseWakeLock() {
+    if (player.wakeLock) { try { player.wakeLock.release(); } catch (e) {} player.wakeLock = null; }
+  }
+
+  /* ========================================================================
+     7. 샘플 양식
+     ======================================================================== */
+  function downloadSample() {
+    if (typeof XLSX === "undefined") {
+      show($("fileMsg"), "warn", "엑셀 모듈을 불러오지 못해 양식을 만들 수 없습니다. 새로고침 후 다시 시도해 주세요.");
+      return;
+    }
+    var data = [
+      ["스팟아이디", "스팟명", "오디오명", "대본내용", "재생시간(초)"],
+      ["SP001", "로비 안내", "개장 안내 01", "안녕하세요. 오늘도 저희 리조트를 찾아 주셔서 감사합니다. 로비 안내 데스크는 오전 아홉 시부터 오후 열 시까지 운영합니다.", 18],
+      ["SP002", "수영장", "이용 수칙 01", "수영장 이용 전 반드시 샤워를 해 주시기 바랍니다. 안전을 위해 다이빙과 뜀박질은 삼가 주십시오.", 14],
+      ["SP003", "주차장", "출차 안내 01", "주차 요금 정산은 지하 일층 무인 정산기에서 가능합니다. 출차 전 미리 정산해 주시면 편리합니다.", 13]
+    ];
+    var ws = XLSX.utils.aoa_to_sheet(data);
+    ws["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 18 }, { wch: 60 }, { wch: 12 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "대본");
+    XLSX.writeFile(wb, "스팟_대본_양식.xlsx");
+  }
+
+  /* ========================================================================
+     8. 이벤트 바인딩
+     ======================================================================== */
+  function debounce(fn, ms) {
+    var t = null;
+    return function () {
+      var args = arguments, self = this;
+      if (t) clearTimeout(t);
+      t = setTimeout(function () { t = null; fn.apply(self, args); }, ms);
+    };
+  }
+
+  var drop = $("drop"), fileInput = $("file");
+  drop.addEventListener("click", function () { fileInput.click(); });
+  drop.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
+  });
+  ["dragenter", "dragover"].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); });
+  });
+  drop.addEventListener("drop", function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+  fileInput.addEventListener("change", function () {
+    if (fileInput.files && fileInput.files[0]) readFile(fileInput.files[0]);
+    fileInput.value = "";     // 같은 파일 재선택 허용
+  });
+
+  $("btnSample").addEventListener("click", downloadSample);
+  $("btnReset").addEventListener("click", function () {
+    stopAll();
+    state.rows = []; state.filtered = []; state.current = null;
+    state.bySpot.clear(); state.byPair.clear();
+    $("filemeta").classList.remove("show");
+    $("inSpot").value = ""; $("inAudio").value = ""; $("inFilter").value = "";
+    fillDatalist($("dlSpot"), []); fillDatalist($("dlAudio"), []);
+    hide($("fileMsg")); hide($("selMsg"));
+    renderScript(null); renderTable([]);
+  });
+
+  var onSpot = debounce(function () { syncAudioList(); updateSelection(); }, 180);
+  $("inSpot").addEventListener("input", onSpot);
+  $("inAudio").addEventListener("input", debounce(updateSelection, 180));
+  $("inSpot").addEventListener("change", function () { syncAudioList(); updateSelection(); });
+  $("inAudio").addEventListener("change", updateSelection);
+  ["inSpot", "inAudio"].forEach(function (id) {
+    $(id).addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); updateSelection(); if (state.current) play(); }
+    });
+  });
+
+  $("inFilter").addEventListener("input", debounce(function (e) { applyFilter(e.target.value); }, 160));
+
+  $("tbody").addEventListener("click", function (e) {
+    var tr = e.target.closest ? e.target.closest("tr") : null;
+    if (!tr || !tr.dataset || tr.dataset.i === undefined) return;
+    var r = state.filtered[+tr.dataset.i];
+    if (r) selectRow(r);
+  });
+
+  $("btnPlay").addEventListener("click", play);
+  $("btnPause").addEventListener("click", function () { player.paused ? resume() : pause(); });
+  $("btnStop").addEventListener("click", stopAll);
+
+  [["rgRate", "vRate", 2, ""], ["rgPitch", "vPitch", 2, ""], ["rgVol", "vVol", 2, ""], ["rgGap", "vGap", 2, "초"]]
+    .forEach(function (t) {
+      var el = $(t[0]);
+      el.addEventListener("input", function () {
+        $(t[1]).textContent = parseFloat(el.value).toFixed(t[2]) + t[3];
+        if (t[0] === "rgRate" || t[0] === "rgGap") {
+          if (state.current && !player.playing) {
+            player.estSec = state.current.sec && $("ckFit").checked
+              ? state.current.sec : estimateSec(state.current.script, currentRate());
+            $("tTot").textContent = mmss(player.estSec);
+          }
+        }
+      });
+    });
+  $("ckFit").addEventListener("change", function () {
+    if (state.current && !player.playing) {
+      player.estSec = state.current.sec && $("ckFit").checked
+        ? state.current.sec : estimateSec(state.current.script, currentRate());
+      $("tTot").textContent = mmss(player.estSec);
+    }
+  });
+
+  // 페이지 이탈 시 음성 정리(백그라운드 잔류 방지)
+  window.addEventListener("pagehide", stopAll);
+  // iOS 사파리는 백그라운드 진입 시 음성이 끊기므로 일시정지 상태로 붙잡아 둔다
+  var IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+               (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (IS_IOS) {
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden && player.playing && !player.paused) pause();
+    });
+  }
+
+  /* ========================================================================
+     9. 초기화
+     ======================================================================== */
+  if (!synth) {
+    show($("playMsg"), "warn", "이 브라우저는 음성 합성(Web Speech API)을 지원하지 않습니다. 크롬 또는 사파리 최신 버전을 사용해 주세요.");
+  } else {
+    loadVoices();
+    if (typeof synth.onvoiceschanged !== "undefined") synth.onvoiceschanged = loadVoices;
+    setTimeout(loadVoices, 300);
+    setTimeout(loadVoices, 1200);   // 모바일 지연 로딩 대비
+  }
+  renderScript(null);
+})();
+</script>
+</body>
+</html>
