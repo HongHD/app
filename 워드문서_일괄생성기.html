@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>워드 문서 일괄 생성기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --navy-900:#0B1B33;
+  --navy-800:#122B4C;
+  --navy-600:#1E4270;
+  --gold:#C8A24A;
+  --gold-soft:#F2E7CC;
+  --paper:#EEF1F6;
+  --card:#FFFFFF;
+  --line:#DCE3EC;
+  --line-strong:#C3CEDC;
+  --text:#182437;
+  --muted:#61718A;
+  --ok:#1F7A5A;
+  --warn:#A9611B;
+  --danger:#B23B36;
+  --shadow:0 1px 2px rgba(11,27,51,.06), 0 12px 28px rgba(11,27,51,.08);
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--text);
+  font-family:"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:14px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px 72px}
+
+/* ── header ─────────────────────────────── */
+.masthead{
+  background:linear-gradient(135deg,var(--navy-900) 0%,var(--navy-600) 100%);
+  color:#fff;padding:34px 0 30px;margin-bottom:26px;
+  border-bottom:3px solid var(--gold);
+}
+.masthead .wrap{padding-bottom:0}
+.brandline{
+  display:flex;align-items:center;gap:10px;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);font-weight:700;margin-bottom:10px;
+}
+.brandline::after{content:"";flex:1;height:1px;background:rgba(200,162,74,.4)}
+h1{
+  font-family:"Nanum Myeongjo","Batang",Georgia,serif;
+  font-size:30px;font-weight:700;margin:0 0 8px;letter-spacing:-.01em;
+}
+.masthead p{margin:0;color:#C6D3E5;max-width:62ch}
+.masthead code{background:rgba(255,255,255,.12);padding:1px 6px;border-radius:4px;color:#F0E3C2}
+
+/* ── cards ──────────────────────────────── */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden;
+}
+.card > header{
+  display:flex;align-items:baseline;gap:12px;
+  padding:16px 22px;border-bottom:1px solid var(--line);background:#FAFBFD;
+}
+.step-no{
+  font-family:"Nanum Myeongjo","Batang",Georgia,serif;
+  font-size:13px;color:var(--gold);font-weight:700;
+  border:1px solid var(--gold);border-radius:50%;
+  width:26px;height:26px;min-width:26px;display:grid;place-items:center;line-height:1;
+}
+.card h2{font-size:16px;margin:0;font-weight:700;letter-spacing:-.01em}
+.card .hint{font-size:12.5px;color:var(--muted);margin-left:auto;text-align:right}
+.card .body{padding:22px}
+.card.locked{opacity:.5;pointer-events:none}
+
+/* ── upload ─────────────────────────────── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.drop{
+  border:1.5px dashed var(--line-strong);border-radius:var(--radius);
+  background:#FBFCFE;padding:26px 20px;text-align:center;cursor:pointer;
+  transition:border-color .15s,background .15s,transform .15s;
+}
+.drop:hover,.drop:focus-visible{border-color:var(--navy-600);background:#F4F7FB;outline:none}
+.drop.over{border-color:var(--gold);background:var(--gold-soft)}
+.drop.filled{border-style:solid;border-color:var(--ok);background:#F3FAF7;text-align:left}
+.drop .icon{font-size:22px;display:block;margin-bottom:8px}
+.drop .t{font-weight:700;margin-bottom:4px}
+.drop .s{font-size:12.5px;color:var(--muted);word-break:break-all}
+.drop .s b{color:var(--ok)}
+
+.row-inline{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:16px}
+label.lbl{font-size:12.5px;font-weight:700;color:var(--muted)}
+select,input[type=text]{
+  font:inherit;color:var(--text);background:#fff;
+  border:1px solid var(--line-strong);border-radius:7px;padding:7px 10px;
+}
+select:focus,input[type=text]:focus{outline:2px solid var(--navy-600);outline-offset:1px;border-color:var(--navy-600)}
+input[type=text]::placeholder{color:#9AA8BC}
+
+/* ── mapping ────────────────────────────── */
+.map-list{display:flex;flex-direction:column;gap:8px}
+.map-row{
+  display:grid;grid-template-columns:minmax(140px,1fr) 24px minmax(160px,1.1fr);
+  align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line);
+  border-radius:8px;background:#FBFCFE;
+}
+.ph{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:13px;color:var(--navy-800);background:var(--gold-soft);
+  border:1px solid #E3D3A8;border-radius:5px;padding:3px 8px;display:inline-block;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.arrow{color:var(--line-strong);text-align:center;font-size:15px}
+.map-row select{width:100%}
+.map-row.unset{background:#FFF9F2;border-color:#EBD7BC}
+.map-row input[type=text]{width:100%;margin-top:6px}
+.map-note{margin-top:14px;font-size:12.5px;color:var(--muted)}
+
+/* ── filename builder (signature) ───────── */
+.builder{display:grid;grid-template-columns:1fr;gap:14px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{
+  font:inherit;font-size:12.5px;cursor:pointer;
+  border:1px solid var(--line-strong);background:#fff;color:var(--navy-800);
+  border-radius:999px;padding:5px 12px;transition:.13s;
+}
+.chip:hover{border-color:var(--navy-600);background:#F1F5FA}
+.chip:focus-visible{outline:2px solid var(--navy-600);outline-offset:1px}
+
+.formula{
+  border:1px solid var(--line-strong);border-radius:8px;background:#FBFCFE;
+  padding:12px;min-height:56px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+}
+.formula .empty{color:#9AA8BC;font-size:13px}
+.token{
+  display:inline-flex;align-items:center;gap:6px;
+  border-radius:6px;padding:4px 6px 4px 10px;font-size:13px;
+  background:var(--navy-800);color:#fff;
+}
+.token.text{background:#fff;color:var(--navy-800);border:1px solid var(--line-strong)}
+.token .x{
+  border:none;background:transparent;color:inherit;cursor:pointer;
+  font-size:14px;line-height:1;opacity:.65;padding:0 2px;
+}
+.token .x:hover{opacity:1}
+.sep{color:var(--gold);font-weight:700}
+
+.filename-preview{
+  border-left:3px solid var(--gold);background:#FCFAF4;
+  padding:10px 14px;border-radius:0 8px 8px 0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:13px;color:var(--navy-900);word-break:break-all;
+}
+.filename-preview span{color:var(--muted)}
+
+/* ── table ──────────────────────────────── */
+.tbl-scroll{overflow:auto;border:1px solid var(--line);border-radius:8px;max-height:320px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 11px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{background:#F5F8FC;position:sticky;top:0;font-weight:700;color:var(--navy-800);z-index:1}
+td.fname{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--navy-800)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:nth-child(even){background:#FCFDFE}
+
+/* ── buttons / status ───────────────────── */
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+button.btn{
+  font:inherit;font-weight:700;cursor:pointer;border-radius:8px;padding:11px 20px;
+  border:1px solid transparent;transition:.15s;
+}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--navy-800);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--navy-600)}
+.btn-ghost{background:#fff;color:var(--navy-800);border-color:var(--line-strong)}
+.btn-ghost:hover:not(:disabled){border-color:var(--navy-600);background:#F4F7FB}
+button.btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:16px;display:none}
+.progress.on{display:block}
+.progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--navy-600),var(--gold));transition:width .2s}
+
+.log{margin-top:14px;font-size:13px;max-height:200px;overflow:auto}
+.log p{margin:0 0 4px;padding-left:16px;text-indent:-16px}
+.log .ok::before{content:"✓ ";color:var(--ok);font-weight:700}
+.log .warn::before{content:"! ";color:var(--warn);font-weight:700}
+.log .err::before{content:"× ";color:var(--danger);font-weight:700}
+.log .info::before{content:"· ";color:var(--muted);font-weight:700}
+
+.notice{
+  border-radius:8px;padding:11px 14px;font-size:13px;margin-top:14px;display:none;
+}
+.notice.on{display:block}
+.notice.warn{background:#FFF8EF;border:1px solid #EBD7BC;color:var(--warn)}
+.notice.err{background:#FDF3F2;border:1px solid #F0CFCD;color:var(--danger)}
+
+footer.foot{text-align:center;color:var(--muted);font-size:12px;padding-top:8px}
+@media (max-width:760px){
+  .grid2{grid-template-columns:1fr}
+  .map-row{grid-template-columns:1fr;gap:6px}
+  .arrow{display:none}
+  h1{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="wrap">
+    <div class="brandline">Excel → Word 일괄 생성</div>
+    <h1>워드 문서 일괄 생성기</h1>
+    <p>엑셀 한 행이 워드 문서 한 개가 됩니다. 워드 템플릿의 <code>{항목명}</code> 자리에 엑셀 값을 채워 넣고, 원하는 이름의 폴더를 새로 만들어 그 안에 저장합니다.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- STEP 1 -->
+  <section class="card" id="card1">
+    <header>
+      <span class="step-no">1</span>
+      <h2>파일 불러오기</h2>
+      <span class="hint">엑셀(.xlsx/.xls/.csv) · 워드 템플릿(.docx)</span>
+    </header>
+    <div class="body">
+      <div class="grid2">
+        <div class="drop" id="dropXlsx" tabindex="0" role="button" aria-label="엑셀 파일 선택">
+          <span class="icon">▦</span>
+          <div class="t">엑셀 데이터 파일</div>
+          <div class="s" id="xlsxInfo">클릭하거나 파일을 끌어다 놓으세요</div>
+        </div>
+        <div class="drop" id="dropDocx" tabindex="0" role="button" aria-label="워드 템플릿 선택">
+          <span class="icon">▤</span>
+          <div class="t">워드 템플릿 파일</div>
+          <div class="s" id="docxInfo">클릭하거나 파일을 끌어다 놓으세요</div>
+        </div>
+      </div>
+      <input type="file" id="fileXlsx" accept=".xlsx,.xls,.csv" hidden>
+      <input type="file" id="fileDocx" accept=".docx" hidden>
+
+      <div class="row-inline" id="sheetRow" style="display:none">
+        <span class="lbl">시트 선택</span>
+        <select id="sheetSel"></select>
+        <span class="lbl" id="rowCount"></span>
+      </div>
+      <div class="notice err" id="loadErr"></div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="card locked" id="card2">
+    <header>
+      <span class="step-no">2</span>
+      <h2>항목 연결</h2>
+      <span class="hint">워드의 <b>{항목}</b> ← 엑셀 열</span>
+    </header>
+    <div class="body">
+      <div class="map-list" id="mapList"></div>
+      <p class="map-note">이름이 같은 항목은 자동으로 연결됩니다. 연결하지 않은 항목은 빈칸으로 채워집니다.</p>
+      <div class="notice warn" id="mapWarn"></div>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="card locked" id="card3">
+    <header>
+      <span class="step-no">3</span>
+      <h2>파일 이름 만들기</h2>
+      <span class="hint">엑셀 열을 눌러 이름을 조합하세요</span>
+    </header>
+    <div class="body">
+      <div class="builder">
+        <div>
+          <span class="lbl">엑셀 열</span>
+          <div class="chips" id="colChips" style="margin-top:7px"></div>
+        </div>
+        <div>
+          <span class="lbl">파일 이름 구성</span>
+          <div class="formula" id="formula" style="margin-top:7px"></div>
+        </div>
+        <div class="row-inline" style="margin-top:0">
+          <span class="lbl">구분 기호</span>
+          <input type="text" id="sepInput" value="_" maxlength="5" style="width:70px">
+          <span class="lbl">고정 문구</span>
+          <input type="text" id="freeText" placeholder="예: 계약서" maxlength="40" style="width:150px">
+          <button class="btn btn-ghost" id="addText" style="padding:7px 14px">추가</button>
+          <label class="lbl" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="seqChk"> 앞에 순번 붙이기
+          </label>
+          <button class="btn btn-ghost" id="clearName" style="padding:7px 14px">비우기</button>
+        </div>
+        <div class="filename-preview" id="fnPreview"><span>첫 행 기준 미리보기가 여기에 표시됩니다.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="card locked" id="card4">
+    <header>
+      <span class="step-no">4</span>
+      <h2>확인하고 저장하기</h2>
+      <span class="hint">앞 5행 미리보기</span>
+    </header>
+    <div class="body">
+      <div class="tbl-scroll"><table id="previewTbl"><thead></thead><tbody></tbody></table></div>
+
+      <div class="row-inline">
+        <span class="lbl">새로 만들 폴더 이름</span>
+        <input type="text" id="folderName" value="생성문서" maxlength="60" style="width:220px">
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btnFolder">폴더 선택하고 저장</button>
+        <button class="btn btn-ghost" id="btnZip">ZIP으로 내려받기</button>
+        <span class="lbl" id="fsHint"></span>
+      </div>
+
+      <div class="progress" id="prog"><i id="progBar"></i></div>
+      <div class="notice err" id="runErr"></div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <footer class="foot">모든 처리는 이 브라우저 안에서만 이루어지며 파일이 외부로 전송되지 않습니다.</footer>
+</div>
+
+<script>
+"use strict";
+(function(){
+
+/* ══════════════════════════════════════════
+   상수 / 상태
+   ══════════════════════════════════════════ */
+const W_NS   = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+const XML_NS = "http://www.w3.org/XML/1998/namespace";
+const TARGET_RE = /^word\/(document\d*|header\d+|footer\d+|footnotes|endnotes)\.xml$/i;
+const PH_RE = /\{([^{}\r\n]{1,100})\}/g;
+const MAX_ROWS = 5000;
+const MAX_FILE_BYTES = 60 * 1024 * 1024;
+
+const state = {
+  workbook:null, sheetNames:[], sheetName:"",
+  columns:[], rows:[],
+  tplName:"", tplFiles:null, tplXml:null,
+  placeholders:[], mapping:Object.create(null), custom:Object.create(null),
+  nameParts:[], busy:false
+};
+
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const n=document.createElement(tag); if(cls)n.className=cls; if(text!=null)n.textContent=text; return n; };
+
+/* ══════════════════════════════════════════
+   공용 유틸
+   ══════════════════════════════════════════ */
+const RESERVED = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+
+function sanitizeName(s, max){
+  let v = String(s == null ? "" : s)
+    .replace(/[\\/:*?"<>|]/g, "_")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^[.\s]+|[.\s]+$/g, "");
+  if (RESERVED.test(v)) v = "_" + v;
+  if (v.length > (max || 90)) v = v.slice(0, max || 90).trim();
+  return v;
+}
+
+function cellText(v){
+  if (v == null) return "";
+  return String(v).replace(/\r\n?|\n/g, " ").replace(/\s+$/,"");
+}
+
+function parseXml(str){
+  const doc = new DOMParser().parseFromString(str, "application/xml");
+  if (doc.getElementsByTagName("parsererror").length) throw new Error("워드 파일의 내부 문서를 읽을 수 없습니다.");
+  return doc;
+}
+const serializeXml = doc => new XMLSerializer().serializeToString(doc);
+
+function readFile(file, as){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload  = () => resolve(fr.result);
+    fr.onerror = () => reject(new Error("파일을 읽지 못했습니다."));
+    if (as === "array") fr.readAsArrayBuffer(file); else fr.readAsBinaryString(file);
+  });
+}
+
+function showNotice(node, msg, on){
+  node.textContent = msg || "";
+  node.classList.toggle("on", !!on && !!msg);
+}
+
+function log(kind, msg){
+  const p = el("p", kind, msg);
+  $("log").appendChild(p);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+const idle = () => new Promise(r => setTimeout(r, 0));
+
+/* ══════════════════════════════════════════
+   워드 템플릿 처리
+   ══════════════════════════════════════════ */
+
+/** 단락 안의 w:t 노드들을 하나의 문자열로 이어 붙여 자리표시자를 찾는다(런 분리 대응) */
+function collectPlaceholders(xmlStr, set){
+  const doc = parseXml(xmlStr);
+  const paras = doc.getElementsByTagNameNS(W_NS, "p");
+  for (let i = 0; i < paras.length; i++){
+    const ts = paras[i].getElementsByTagNameNS(W_NS, "t");
+    let text = "";
+    for (let j = 0; j < ts.length; j++) text += ts[j].textContent;
+    if (text.indexOf("{") === -1) continue;
+    PH_RE.lastIndex = 0;
+    let m;
+    while ((m = PH_RE.exec(text)) !== null){
+      const key = m[1].trim();
+      if (key) set.add(key);
+    }
+  }
+}
+
+/** 여러 런에 걸친 [start,end) 구간을 value 로 치환. 서식은 첫 런의 것을 따른다. */
+function replaceRange(nodes, start, end, value){
+  let off = 0, placed = false;
+  const info = new Array(nodes.length);
+  for (let i = 0; i < nodes.length; i++){
+    const t = nodes[i].textContent;
+    info[i] = { node: nodes[i], text: t, s: off, e: off + t.length };
+    off += t.length;
+  }
+  for (let i = 0; i < info.length; i++){
+    const it = info[i];
+    if (it.e <= start || it.s >= end) continue;
+    const ls = Math.max(start, it.s) - it.s;
+    const le = Math.min(end,   it.e) - it.s;
+    it.node.textContent = it.text.slice(0, ls) + (placed ? "" : value) + it.text.slice(le);
+    it.node.setAttributeNS(XML_NS, "xml:space", "preserve");
+    placed = true;
+  }
+}
+
+function fillXml(xmlStr, getVal){
+  const doc = parseXml(xmlStr);
+  const paras = doc.getElementsByTagNameNS(W_NS, "p");
+  for (let i = 0; i < paras.length; i++){
+    const ts = paras[i].getElementsByTagNameNS(W_NS, "t");
+    if (!ts.length) continue;
+    const nodes = new Array(ts.length);
+    let text = "";
+    for (let j = 0; j < ts.length; j++){ nodes[j] = ts[j]; text += ts[j].textContent; }
+    if (text.indexOf("{") === -1) continue;
+
+    const hits = [];
+    PH_RE.lastIndex = 0;
+    let m;
+    while ((m = PH_RE.exec(text)) !== null) hits.push({ s:m.index, e:m.index + m[0].length, key:m[1].trim() });
+    if (!hits.length) continue;
+
+    for (let k = hits.length - 1; k >= 0; k--) replaceRange(nodes, hits[k].s, hits[k].e, getVal(hits[k].key));
+  }
+  return serializeXml(doc);
+}
+
+/* ══════════════════════════════════════════
+   파일 불러오기
+   ══════════════════════════════════════════ */
+function bindDrop(zone, input, handler){
+  zone.addEventListener("click", () => input.click());
+  zone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); input.click(); } });
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault(); zone.classList.remove("over");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handler(e.dataTransfer.files[0]);
+  });
+  input.addEventListener("change", () => { if (input.files[0]) handler(input.files[0]); input.value = ""; });
+}
+
+async function loadExcel(file){
+  showNotice($("loadErr"), "", false);
+  try{
+    if (file.size > MAX_FILE_BYTES) throw new Error("엑셀 파일이 너무 큽니다. 60MB 이하 파일을 사용하세요.");
+    const buf = await readFile(file, "array");
+    const wb = XLSX.read(new Uint8Array(buf), { type:"array", cellDates:true, cellStyles:false });
+    if (!wb.SheetNames.length) throw new Error("시트를 찾을 수 없습니다.");
+    state.workbook = wb;
+    state.sheetNames = wb.SheetNames.slice();
+
+    const sel = $("sheetSel");
+    sel.textContent = "";
+    state.sheetNames.forEach(n => { const o = el("option", null, n); o.value = n; sel.appendChild(o); });
+    $("sheetRow").style.display = state.sheetNames.length > 1 ? "flex" : "none";
+
+    const z = $("dropXlsx");
+    z.classList.add("filled");
+    $("xlsxInfo").textContent = "";
+    $("xlsxInfo").appendChild(el("b", null, "불러옴 · "));
+    $("xlsxInfo").appendChild(document.createTextNode(file.name));
+
+    useSheet(state.sheetNames[0]);
+  }catch(err){
+    showNotice($("loadErr"), err.message || "엑셀을 읽는 중 문제가 발생했습니다.", true);
+  }
+}
+
+function useSheet(name){
+  state.sheetName = name;
+  $("sheetSel").value = name;
+  const ws = state.workbook.Sheets[name];
+  const aoa = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:"", blankrows:false });
+
+  if (!aoa.length) { showNotice($("loadErr"), "선택한 시트에 데이터가 없습니다.", true); return; }
+
+  const head = aoa[0].map((h, i) => {
+    const t = cellText(h).trim();
+    return t || ("열" + (i + 1));
+  });
+  const seen = Object.create(null);
+  const cols = head.map(h => { seen[h] = (seen[h] || 0) + 1; return seen[h] > 1 ? h + "(" + seen[h] + ")" : h; });
+
+  const rows = [];
+  for (let r = 1; r < aoa.length && rows.length < MAX_ROWS; r++){
+    const arr = aoa[r];
+    const obj = Object.create(null);
+    let empty = true;
+    for (let c = 0; c < cols.length; c++){
+      const v = cellText(arr ? arr[c] : "");
+      obj[cols[c]] = v;
+      if (v !== "") empty = false;
+    }
+    if (!empty) rows.push(obj);
+  }
+
+  state.columns = cols;
+  state.rows = rows;
+  $("rowCount").textContent = "데이터 " + rows.length + "행 · 열 " + cols.length + "개";
+  if (aoa.length - 1 > MAX_ROWS) showNotice($("loadErr"), "행이 너무 많아 앞 " + MAX_ROWS + "행만 사용합니다.", true);
+  else showNotice($("loadErr"), "", false);
+
+  state.nameParts = state.nameParts.filter(p => p.type !== "col" || cols.indexOf(p.value) !== -1);
+  renderAll();
+}
+
+async function loadWord(file){
+  showNotice($("loadErr"), "", false);
+  try{
+    if (!/\.docx$/i.test(file.name)) throw new Error("워드 템플릿은 .docx 형식만 사용할 수 있습니다. (.doc는 워드에서 .docx로 저장해 주세요)");
+    if (file.size > MAX_FILE_BYTES) throw new Error("워드 파일이 너무 큽니다. 60MB 이하 파일을 사용하세요.");
+    const buf = await readFile(file, "array");
+    const zip = await JSZip.loadAsync(buf);
+    if (!zip.file("word/document.xml")) throw new Error("올바른 워드(.docx) 문서가 아닙니다.");
+
+    const entries = [];
+    zip.forEach((path, f) => { if (!f.dir) entries.push({ path, f }); });
+
+    const files = [], xml = Object.create(null);
+    for (const e of entries){
+      if (TARGET_RE.test(e.path)) xml[e.path] = await e.f.async("string");
+      else files.push({ path:e.path, data: await e.f.async("uint8array") });
+    }
+
+    const set = new Set();
+    for (const p in xml) collectPlaceholders(xml[p], set);
+
+    state.tplName  = file.name;
+    state.tplFiles = files;
+    state.tplXml   = xml;
+    state.placeholders = Array.from(set);
+
+    const z = $("dropDocx");
+    z.classList.add("filled");
+    $("docxInfo").textContent = "";
+    $("docxInfo").appendChild(el("b", null, "불러옴 · "));
+    $("docxInfo").appendChild(document.createTextNode(file.name + " · 항목 " + state.placeholders.length + "개"));
+
+    if (!state.placeholders.length)
+      showNotice($("loadErr"), "워드 템플릿에서 {항목명} 형태의 자리표시자를 찾지 못했습니다. 중괄호가 온전한지 확인해 주세요.", true);
+
+    autoMap();
+    renderAll();
+  }catch(err){
+    showNotice($("loadErr"), err.message || "워드 템플릿을 읽는 중 문제가 발생했습니다.", true);
+  }
+}
+
+function autoMap(){
+  const norm = s => s.replace(/\s/g, "").toLowerCase();
+  const byNorm = Object.create(null);
+  state.columns.forEach(c => { byNorm[norm(c)] = c; });
+  state.placeholders.forEach(p => {
+    if (state.mapping[p]) return;
+    const hit = byNorm[norm(p)];
+    if (hit) state.mapping[p] = hit;
+  });
+}
+
+/* ══════════════════════════════════════════
+   화면 렌더링
+   ══════════════════════════════════════════ */
+function renderMapping(){
+  const list = $("mapList");
+  list.textContent = "";
+  let unset = 0;
+
+  state.placeholders.forEach(ph => {
+    const row = el("div", "map-row");
+    row.appendChild(el("span", "ph", "{" + ph + "}"));
+    row.appendChild(el("span", "arrow", "→"));
+
+    const wrap = el("div");
+    const sel = el("select");
+    const blank = el("option", null, "— 비워 둠 —"); blank.value = ""; sel.appendChild(blank);
+    state.columns.forEach(c => { const o = el("option", null, c); o.value = c; sel.appendChild(o); });
+    const fixed = el("option", null, "직접 입력값"); fixed.value = "__fixed__"; sel.appendChild(fixed);
+    sel.value = state.mapping[ph] || "";
+
+    const txt = el("input"); txt.type = "text"; txt.placeholder = "모든 문서에 같은 값";
+    txt.value = state.custom[ph] || "";
+    txt.style.display = sel.value === "__fixed__" ? "block" : "none";
+    txt.addEventListener("input", () => { state.custom[ph] = txt.value; renderPreview(); });
+
+    sel.addEventListener("change", () => {
+      state.mapping[ph] = sel.value;
+      txt.style.display = sel.value === "__fixed__" ? "block" : "none";
+      renderMapping(); renderPreview();
+    });
+
+    if (!sel.value) { row.classList.add("unset"); unset++; }
+    wrap.appendChild(sel); wrap.appendChild(txt);
+    row.appendChild(wrap);
+    list.appendChild(row);
+  });
+
+  showNotice($("mapWarn"),
+    unset ? ("연결되지 않은 항목이 " + unset + "개 있습니다. 이대로 만들면 해당 자리는 빈칸으로 남습니다.") : "",
+    unset > 0);
+}
+
+function renderChips(){
+  const box = $("colChips");
+  box.textContent = "";
+  state.columns.forEach(c => {
+    const b = el("button", "chip", c);
+    b.type = "button";
+    b.addEventListener("click", () => { state.nameParts.push({ type:"col", value:c }); renderName(); renderPreview(); });
+    box.appendChild(b);
+  });
+}
+
+function renderName(){
+  const f = $("formula");
+  f.textContent = "";
+  if (!state.nameParts.length){
+    f.appendChild(el("span", "empty", "위의 열 이름을 눌러 파일 이름을 만드세요. 예) 계약번호 + 공급자명"));
+    return;
+  }
+  state.nameParts.forEach((p, i) => {
+    if (i) f.appendChild(el("span", "sep", $("sepInput").value || ""));
+    const t = el("span", p.type === "col" ? "token" : "token text", p.value);
+    const x = el("button", "x", "×");
+    x.type = "button";
+    x.title = "빼기";
+    x.addEventListener("click", () => { state.nameParts.splice(i, 1); renderName(); renderPreview(); });
+    t.appendChild(x);
+    f.appendChild(t);
+  });
+}
+
+function buildFileName(row, index, total, used){
+  const sep = $("sepInput").value;
+  const parts = state.nameParts
+    .map(p => p.type === "col" ? cellText(row[p.value]) : p.value)
+    .filter(s => s !== "");
+  let base = sanitizeName(parts.join(sep), 90);
+  if (!base) base = "문서";
+  if ($("seqChk").checked){
+    const pad = String(total).length;
+    base = String(index + 1).padStart(pad, "0") + sep + base;
+    base = sanitizeName(base, 100);
+  }
+  let name = base, n = 1;
+  if (used){
+    while (used.has(name.toLowerCase())) { n++; name = base + "(" + n + ")"; }
+    used.add(name.toLowerCase());
+  }
+  return name + ".docx";
+}
+
+function valueFor(ph, row){
+  const m = state.mapping[ph];
+  if (m === "__fixed__") return cellText(state.custom[ph]);
+  if (!m) return "";
+  return cellText(row[m]);
+}
+
+function renderPreview(){
+  renderName();
+
+  const p = $("fnPreview");
+  p.textContent = "";
+  if (state.rows.length && state.nameParts.length){
+    p.appendChild(document.createTextNode(buildFileName(state.rows[0], 0, state.rows.length, null)));
+  } else {
+    p.appendChild(el("span", null, "엑셀을 불러오고 열을 선택하면 첫 행 기준 파일 이름이 표시됩니다."));
+  }
+
+  const thead = $("previewTbl").querySelector("thead");
+  const tbody = $("previewTbl").querySelector("tbody");
+  thead.textContent = ""; tbody.textContent = "";
+  if (!state.rows.length || !state.placeholders.length) return;
+
+  const hr = el("tr");
+  hr.appendChild(el("th", null, "파일 이름"));
+  state.placeholders.forEach(ph => hr.appendChild(el("th", null, "{" + ph + "}")));
+  thead.appendChild(hr);
+
+  const used = new Set();
+  state.rows.slice(0, 5).forEach((row, i) => {
+    const tr = el("tr");
+    tr.appendChild(el("td", "fname", buildFileName(row, i, state.rows.length, used)));
+    state.placeholders.forEach(ph => {
+      const v = valueFor(ph, row);
+      tr.appendChild(el("td", null, v === "" ? "—" : v));
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+function renderAll(){
+  const hasData = state.rows.length > 0 && state.columns.length > 0;
+  const hasTpl  = !!state.tplXml;
+  $("card2").classList.toggle("locked", !(hasData && hasTpl));
+  $("card3").classList.toggle("locked", !hasData);
+  $("card4").classList.toggle("locked", !(hasData && hasTpl));
+  if (hasData && hasTpl) renderMapping();
+  if (hasData) renderChips();
+  renderPreview();
+  const ready = hasData && hasTpl;
+  $("btnFolder").disabled = !ready || state.busy;
+  $("btnZip").disabled    = !ready || state.busy;
+}
+
+/* ══════════════════════════════════════════
+   문서 생성
+   ══════════════════════════════════════════ */
+async function buildDocx(row){
+  const zip = new JSZip();
+  const files = state.tplFiles;
+  for (let i = 0; i < files.length; i++) zip.file(files[i].path, files[i].data, { binary:true });
+  const cache = Object.create(null);
+  const getVal = key => {
+    if (key in cache) return cache[key];
+    const v = valueFor(key, row);
+    cache[key] = v;
+    return v;
+  };
+  for (const p in state.tplXml) zip.file(p, fillXml(state.tplXml[p], getVal));
+  return zip.generateAsync({ type:"blob", compression:"DEFLATE", compressionOptions:{ level:6 } });
+}
+
+function setBusy(on){
+  state.busy = on;
+  $("btnFolder").disabled = on || $("card4").classList.contains("locked");
+  $("btnZip").disabled    = on || $("card4").classList.contains("locked");
+  $("prog").classList.toggle("on", on);
+  if (!on) $("progBar").style.width = "0%";
+}
+
+async function run(dirHandle){
+  showNotice($("runErr"), "", false);
+  $("log").textContent = "";
+
+  const folder = sanitizeName($("folderName").value, 60);
+  if (!folder){ showNotice($("runErr"), "새로 만들 폴더 이름을 입력해 주세요.", true); return; }
+  if (!state.rows.length){ showNotice($("runErr"), "생성할 데이터가 없습니다.", true); return; }
+  if (!state.nameParts.length) log("warn", "파일 이름 구성이 비어 있어 순번으로 저장합니다.");
+
+  setBusy(true);
+  const total = state.rows.length;
+  const used = new Set();
+  let outZip = null, target = null, done = 0, failed = 0;
+
+  try{
+    if (dirHandle){
+      target = await dirHandle.getDirectoryHandle(folder, { create:true });
+      log("ok", "폴더를 만들었습니다 · " + folder);
+    } else {
+      outZip = new JSZip();
+    }
+
+    for (let i = 0; i < total; i++){
+      const row = state.rows[i];
+      const fname = buildFileName(row, i, total, used);
+      try{
+        const blob = await buildDocx(row);
+        if (target){
+          const fh = await target.getFileHandle(fname, { create:true });
+          const w  = await fh.createWritable();
+          await w.write(blob);
+          await w.close();
+        } else {
+          outZip.file(folder + "/" + fname, blob);
+        }
+        done++;
+      }catch(e){
+        failed++;
+        log("err", (i + 1) + "행 실패 · " + fname + " · " + (e.message || e));
+      }
+      $("progBar").style.width = Math.round(((i + 1) / total) * 100) + "%";
+      if (i % 3 === 0) await idle();
+    }
+
+    if (outZip){
+      log("info", "압축 파일을 만드는 중입니다…");
+      const blob = await outZip.generateAsync({ type:"blob", compression:"DEFLATE", compressionOptions:{ level:6 } });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = folder + ".zip";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      outZip = null;
+      log("ok", folder + ".zip 내려받기를 시작했습니다. 압축을 풀면 " + folder + " 폴더가 나옵니다.");
+    }
+
+    log(failed ? "warn" : "ok", "문서 " + done + "개 생성 완료" + (failed ? " · 실패 " + failed + "개" : ""));
+  }catch(err){
+    showNotice($("runErr"), err.message || "문서를 만드는 중 문제가 발생했습니다.", true);
+  }finally{
+    setBusy(false);
+  }
+}
+
+/* ══════════════════════════════════════════
+   이벤트 연결
+   ══════════════════════════════════════════ */
+bindDrop($("dropXlsx"), $("fileXlsx"), loadExcel);
+bindDrop($("dropDocx"), $("fileDocx"), loadWord);
+$("sheetSel").addEventListener("change", e => useSheet(e.target.value));
+$("sepInput").addEventListener("input", renderPreview);
+$("seqChk").addEventListener("change", renderPreview);
+$("clearName").addEventListener("click", () => { state.nameParts = []; renderPreview(); });
+$("addText").addEventListener("click", () => {
+  const v = sanitizeName($("freeText").value, 30);
+  if (!v) return;
+  state.nameParts.push({ type:"text", value:v });
+  $("freeText").value = "";
+  renderPreview();
+});
+$("freeText").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); $("addText").click(); } });
+
+const fsSupported = typeof window.showDirectoryPicker === "function";
+$("fsHint").textContent = fsSupported
+  ? "폴더 선택 창에서 워드 템플릿이 있는 폴더를 고르면, 그 안에 새 폴더가 만들어집니다."
+  : "이 브라우저는 폴더 저장을 지원하지 않습니다. ZIP으로 내려받은 뒤 원하는 위치에 풀어 주세요.";
+$("btnFolder").addEventListener("click", async () => {
+  if (!fsSupported){ showNotice($("runErr"), "이 브라우저에서는 폴더 저장을 쓸 수 없습니다. ZIP 내려받기를 이용하거나 Chrome·Edge에서 열어 주세요.", true); return; }
+  let dh;
+  try{
+    dh = await window.showDirectoryPicker({ mode:"readwrite" });
+  }catch(e){
+    if (e && e.name === "AbortError") return;
+    showNotice($("runErr"), "폴더를 여는 권한을 얻지 못했습니다. 파일을 컴퓨터에 저장한 뒤 직접 열어 실행하면 사용할 수 있습니다.", true);
+    return;
+  }
+  run(dh);
+});
+$("btnZip").addEventListener("click", () => run(null));
+
+renderAll();
+
+})();
+</script>
+</body>
+</html>
