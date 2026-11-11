@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a1a33">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https: wss:; media-src 'self' data: blob: https://translate.google.com https://translate.googleapis.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>PigTalk · 양돈 무전기</title>
+<style>
+:root{
+  --bg:#0a1a33; --bg2:#0e2244; --panel:#122a52; --line:#223f72;
+  --text:#eaf1ff; --muted:#93a8cc; --accent:#f5b53d; --accent2:#ffd27a;
+  --ok:#2fd18b; --warn:#f5b53d; --bad:#ff5a5f;
+  --own:#1d4fa3; --other:#17335f; --radius:16px;
+  --sab:env(safe-area-inset-bottom,0px); --sat:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(1200px 600px at 50% -10%,#16346a 0%,var(--bg) 60%);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI","Noto Sans KR","Noto Sans Devanagari","Noto Sans Myanmar","Noto Sans Thai",Roboto,sans-serif;
+  font-size:16px;line-height:1.45;overflow:hidden}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.screen{display:none;height:100vh;height:100dvh;flex-direction:column;max-width:720px;margin:0 auto}
+.screen.active{display:flex}
+
+/* ---------- Join ---------- */
+#join{padding:calc(24px + var(--sat)) 20px calc(20px + var(--sab));overflow-y:auto}
+.brand{text-align:center;margin:8px 0 22px}
+.logo{width:68px;height:68px;margin:0 auto 10px;border-radius:20px;display:grid;place-items:center;font-size:36px;
+  background:linear-gradient(145deg,#1d4fa3,#0e2244);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.brand h1{margin:0;font-size:1.7rem;letter-spacing:.5px}
+.brand p{margin:4px 0 0;color:var(--muted)}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));border:1px solid var(--line);
+  border-radius:var(--radius);padding:18px}
+.card label{display:block;margin:14px 0 6px;color:var(--muted);font-size:.9rem;font-weight:600}
+.card label:first-child{margin-top:0}
+.field{width:100%;padding:13px 14px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;outline:none}
+.field:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,181,61,.18)}
+.langs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.langs button{padding:12px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);display:flex;gap:8px;align-items:center;justify-content:center;font-weight:600}
+.langs button[aria-pressed="true"]{border-color:var(--accent);background:rgba(245,181,61,.14);color:var(--accent2)}
+.primary{width:100%;margin-top:18px;padding:15px;border:0;border-radius:14px;font-weight:800;font-size:1.05rem;color:#201300;
+  background:linear-gradient(180deg,var(--accent2),var(--accent));box-shadow:0 8px 20px rgba(245,181,61,.25)}
+.primary:active{transform:translateY(1px)}
+.err{min-height:1.3em;margin:10px 0 0;color:var(--bad);font-size:.9rem}
+.hint{margin:16px 4px 0;color:var(--muted);font-size:.85rem}
+
+/* ---------- Chat ---------- */
+.top{display:flex;align-items:center;gap:8px;padding:calc(10px + var(--sat)) 12px 10px;border-bottom:1px solid var(--line);background:rgba(10,26,51,.85);backdrop-filter:blur(8px);position:relative;z-index:5}
+.top .ttl{flex:1;min-width:0}
+.top .ttl b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.8rem}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--warn)}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+.ibtn{min-width:42px;height:42px;padding:0 10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.panel{position:absolute;right:12px;top:calc(100% + 6px);width:min(300px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 16px 40px rgba(0,0,0,.45)}
+.panel[hidden]{display:none}
+.panel .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px}
+.panel input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+.panel input[type=range]{width:130px;accent-color:var(--accent)}
+.mem{display:flex;align-items:center;gap:8px;padding:6px 2px}
+#msgs{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
+.msg{max-width:88%;padding:10px 12px 8px;border-radius:16px;position:relative;border:1px solid var(--line);word-break:break-word}
+.msg.other{align-self:flex-start;background:var(--other);border-top-left-radius:6px}
+.msg.own{align-self:flex-end;background:var(--own);border-top-right-radius:6px}
+.msg.urgent{border-color:var(--bad);box-shadow:0 0 0 2px rgba(255,90,95,.35);animation:flash 1s 3}
+.mhead{display:flex;justify-content:space-between;gap:12px;font-size:.78rem;color:var(--muted);margin-bottom:3px}
+.mhead .who{font-weight:700;color:var(--accent2)}
+.main{margin:0;font-size:calc(1.15rem * var(--fs,1));font-weight:600;white-space:pre-wrap}
+.sub{margin:4px 0 0;font-size:.85rem;color:var(--muted);white-space:pre-wrap}
+.sub:empty{display:none}
+.play{position:absolute;right:6px;bottom:4px;border:0;background:transparent;font-size:1rem;opacity:.75;padding:4px 6px}
+.msg .main{padding-right:22px}
+.empty{margin:auto;text-align:center;color:var(--muted);padding:20px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:8px 12px;border-top:1px solid var(--line);scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:9px 13px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:.9rem;white-space:nowrap}
+.chip.urg{border-color:var(--bad);color:#ffd5d6;background:rgba(255,90,95,.14);font-weight:700}
+.bar{display:flex;align-items:flex-end;gap:10px;padding:10px 12px calc(12px + var(--sab));background:rgba(10,26,51,.9);border-top:1px solid var(--line)}
+.mic{flex:0 0 auto;width:76px;height:76px;border-radius:50%;border:0;color:#201300;font-weight:800;font-size:.72rem;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1.1;padding:4px;
+  background:linear-gradient(180deg,var(--accent2),var(--accent));box-shadow:0 8px 22px rgba(245,181,61,.3)}
+.mic .ic{font-size:1.7rem}
+.mic.on{background:linear-gradient(180deg,#ff8a8d,var(--bad));color:#fff;animation:pulse 1.2s infinite}
+.mic:disabled{opacity:.45}
+.inwrap{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+#txt{resize:none;width:100%;min-height:52px;max-height:120px;padding:12px;background:var(--bg2);border:1px solid var(--line);border-radius:14px;outline:none}
+#txt:focus{border-color:var(--accent)}
+.send{padding:11px;border-radius:12px;border:0;background:var(--own);font-weight:800;border:1px solid #3a73cf}
+.send:disabled{opacity:.5}
+.toast{position:fixed;left:50%;bottom:calc(120px + var(--sab));transform:translateX(-50%);max-width:min(92vw,520px);background:#000c;color:#fff;border:1px solid var(--line);padding:10px 14px;border-radius:12px;z-index:50;font-size:.92rem;text-align:center}
+.toast[hidden]{display:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,90,95,.6)}70%{box-shadow:0 0 0 18px rgba(255,90,95,0)}100%{box-shadow:0 0 0 0 rgba(255,90,95,0)}}
+@keyframes flash{50%{background:#5a1f2a}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ================= 입장 화면 ================= -->
+<section id="join" class="screen active">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">🐖</div>
+    <h1>PigTalk</h1>
+    <p data-i18n="양돈 무전기 · 실시간 통역">양돈 무전기 · 실시간 통역</p>
+  </div>
+
+  <form id="joinForm" class="card" autocomplete="off" novalidate>
+    <label id="lblLang" data-i18n="내 언어">내 언어</label>
+    <div class="langs" id="langBtns" role="group" aria-labelledby="lblLang">
+      <button type="button" data-lang="ko" aria-pressed="true">🇰🇷 한국어</button>
+      <button type="button" data-lang="ne" aria-pressed="false">🇳🇵 नेपाली</button>
+      <button type="button" data-lang="my" aria-pressed="false">🇲🇲 မြန်မာ</button>
+      <button type="button" data-lang="vi" aria-pressed="false">🇻🇳 Tiếng Việt</button>
+      <button type="button" data-lang="th" aria-pressed="false">🇹🇭 ไทย</button>
+    </div>
+
+    <label for="nameIn" data-i18n="이름">이름</label>
+    <input id="nameIn" class="field" maxlength="20" autocomplete="off" data-i18n-ph="이름을 입력하세요" placeholder="이름을 입력하세요">
+
+    <label for="roomIn" data-i18n="농장 코드 (같은 코드끼리 연결)">농장 코드 (같은 코드끼리 연결)</label>
+    <input id="roomIn" class="field" maxlength="20" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="latin" placeholder="예: pig2024farm">
+
+    <button type="submit" class="primary" data-i18n="입장하기">입장하기</button>
+    <p id="joinErr" class="err" role="alert"></p>
+  </form>
+  <p class="hint" data-i18n="같은 농장 코드를 입력한 사람끼리 연결됩니다. 남이 추측하기 어려운 코드를 쓰세요. (영문·숫자 4~20자)">같은 농장 코드를 입력한 사람끼리 연결됩니다. 남이 추측하기 어려운 코드를 쓰세요. (영문·숫자 4~20자)</p>
+</section>
+
+<!-- ================= 무전기 화면 ================= -->
+<section id="chat" class="screen">
+  <header class="top">
+    <div class="ttl">
+      <b id="roomLbl">🐖</b>
+      <div class="stat"><span id="statDot" class="dot"></span><span id="statTxt">…</span></div>
+    </div>
+    <button type="button" id="memBtn" class="ibtn" aria-label="members">👥 <span id="memCnt">1</span></button>
+    <button type="button" id="ttsBtn" class="ibtn" aria-label="auto voice" aria-pressed="true">🔊</button>
+    <button type="button" id="setBtn" class="ibtn" aria-label="settings">⚙</button>
+    <div id="memPanel" class="panel" hidden></div>
+    <div id="setPanel" class="panel" hidden>
+      <div class="row"><span data-i18n="받은 글 자동 음성 재생">받은 글 자동 음성 재생</span><input type="checkbox" id="autoTts" checked></div>
+      <div class="row"><span data-i18n="말한 뒤 자동 전송">말한 뒤 자동 전송</span><input type="checkbox" id="autoSend"></div>
+      <div class="row"><span data-i18n="음성 속도">음성 속도</span><input type="range" id="rate" min="0.6" max="1.3" step="0.05" value="0.95"></div>
+      <div class="row"><span data-i18n="큰 글씨">큰 글씨</span><input type="checkbox" id="bigFont"></div>
+      <div class="row"><button type="button" id="leaveBtn" class="chip urg" data-i18n="나가기">나가기</button></div>
+    </div>
+  </header>
+
+  <div id="msgs" aria-live="polite"></div>
+  <div id="chips" class="chips" aria-label="quick phrases"></div>
+
+  <div class="bar">
+    <button type="button" id="mic" class="mic" aria-pressed="false"><span class="ic">🎤</span><span id="micTxt" data-i18n="말하기">말하기</span></button>
+    <div class="inwrap">
+      <textarea id="txt" rows="2" maxlength="300" data-i18n-ph="말하거나 글자로 입력하세요" placeholder="말하거나 글자로 입력하세요"></textarea>
+      <button type="button" id="send" class="send" data-i18n="전송">전송</button>
+    </div>
+  </div>
+</section>
+
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ===================== 상수 / 유틸 ===================== */
+  var PREFIX = 'pigtalk-v1-';
+  var MAX_TEXT = 300, MAX_BUBBLES = 150, MAX_CONNS = 40, MAX_QUEUE = 8;
+  var LANGS = {
+    ko: { name: '한국어',   flag: '🇰🇷', sr: 'ko-KR', tts: 'ko-KR' },
+    ne: { name: '네팔어',   flag: '🇳🇵', sr: 'ne-NP', tts: 'ne-NP', alt: 'hi-IN' },
+    my: { name: '미얀마어', flag: '🇲🇲', sr: 'my-MM', tts: 'my-MM' },
+    vi: { name: '베트남어', flag: '🇻🇳', sr: 'vi-VN', tts: 'vi-VN' },
+    th: { name: '태국어',   flag: '🇹🇭', sr: 'th-TH', tts: 'th-TH' }
+  };
+  var FATAL = { 'network': 1, 'server-error': 1, 'socket-error': 1, 'socket-closed': 1, 'peer-unavailable': 1, 'browser-incompatible': 1 };
+  var PHRASES = [
+    { text: '긴급 상황입니다! 빨리 와 주세요.', urgent: true },
+    { text: '네, 알겠습니다.' },
+    { text: '잠시만 기다려 주세요.' },
+    { text: '도움이 필요합니다.' },
+    { text: '다시 한 번 말씀해 주세요.' },
+    { text: '사료 급여를 끝냈습니다.' },
+    { text: '청소를 끝냈습니다.' },
+    { text: '돼지가 아파 보입니다.' },
+    { text: '물이 나오지 않습니다.' },
+    { text: '분만이 시작됐습니다.' },
+    { text: '지금 가겠습니다.' }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function hasLang(l) { return typeof l === 'string' && Object.prototype.hasOwnProperty.call(LANGS, l); }
+  function uid() {
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID().slice(0, 18); } catch (e) {}
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+  function timeStr() {
+    try { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
+  }
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  /* ===================== 상태 ===================== */
+  var S = {
+    name: '', lang: 'ko', room: '',
+    peer: null, hub: false, conns: new Map(), upConn: null,
+    members: new Map(), memList: [],
+    status: 'idle', stopped: true, retryTimer: null,
+    autoTts: true, autoSend: false, rate: 0.95,
+    rec: null, listening: false, suppressAuto: false,
+    seen: new Set(), wake: null, uiTok: 0
+  };
+
+  /* ===================== 번역 ===================== */
+  var memCache = new Map();
+  var perCache = {};
+  try { perCache = JSON.parse(store.get('pt_cache_v1') || '{}') || {}; } catch (e) { perCache = {}; }
+  function savePer() {
+    var ks = Object.keys(perCache);
+    if (ks.length > 250) ks.slice(0, ks.length - 250).forEach(function (k) { delete perCache[k]; });
+    store.set('pt_cache_v1', JSON.stringify(perCache));
+  }
+  function fetchJson(url) {
+    var ac = new AbortController();
+    var t = setTimeout(function () { ac.abort(); }, 8000);
+    return fetch(url, { signal: ac.signal, credentials: 'omit', referrerPolicy: 'no-referrer' })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(function (j) { clearTimeout(t); return j; }, function (e) { clearTimeout(t); throw e; });
+  }
+  function viaGoogle(text, from, to) {
+    var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=' + from + '&tl=' + to + '&q=' + encodeURIComponent(text);
+    return fetchJson(url).then(function (j) {
+      if (!Array.isArray(j) || !Array.isArray(j[0])) throw new Error('format');
+      var out = j[0].map(function (s) { return s && s[0] ? s[0] : ''; }).join('').trim();
+      if (!out) throw new Error('empty');
+      return out;
+    });
+  }
+  function viaMyMemory(text, from, to) {
+    var url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=' + from + '|' + to;
+    return fetchJson(url).then(function (j) {
+      var t = j && j.responseData && j.responseData.translatedText;
+      if (!t || typeof t !== 'string' || /^MYMEMORY WARNING/i.test(t) || Number(j.responseStatus) !== 200) throw new Error('mm');
+      return t.trim();
+    });
+  }
+  function translate(text, from, to, persist) {
+    text = String(text == null ? '' : text).trim();
+    if (!text || from === to) return Promise.resolve(text);
+    var key = from + '|' + to + '|' + text;
+    if (persist && perCache[key]) return Promise.resolve(perCache[key]);
+    if (memCache.has(key)) return Promise.resolve(memCache.get(key));
+    return viaGoogle(text, from, to).catch(function () { return viaMyMemory(text, from, to); }).then(function (out) {
+      memCache.set(key, out);
+      if (memCache.size > 300) memCache.delete(memCache.keys().next().value);
+      if (persist) { perCache[key] = out; savePer(); }
+      return out;
+    });
+  }
+  /* 한국어 UI 문구를 내 언어로 */
+  function tr(ko) {
+    if (S.lang === 'ko') return Promise.resolve(ko);
+    return translate(ko, 'ko', S.lang, true).catch(function () { return ko; });
+  }
+
+  /* ===================== UI 번역 / 토스트 ===================== */
+  function applyUi(lang) {
+    var tok = ++S.uiTok;
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var ko = el.getAttribute('data-i18n');
+      el.textContent = ko;
+      if (lang !== 'ko') translate(ko, 'ko', lang, true).then(function (t) { if (tok === S.uiTok) el.textContent = t; }, function () {});
+    });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function (el) {
+      var ko = el.getAttribute('data-i18n-ph');
+      el.placeholder = ko;
+      if (lang !== 'ko') translate(ko, 'ko', lang, true).then(function (t) { if (tok === S.uiTok) el.placeholder = t; }, function () {});
+    });
+    updateMicLabel();
+    updateStatusText();
+  }
+  var toastTimer = null;
+  function showToast(msg) {
+    var el = $('toast');
+    el.textContent = msg; el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, 3800);
+  }
+  function toast(ko) { tr(ko).then(showToast); }
+
+  /* ===================== TTS ===================== */
+  var canTts = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
+  var tts = { q: [], busy: false, voices: [], timer: null, cur: null, warned: {} };
+  function refreshVoices() { try { tts.voices = speechSynthesis.getVoices() || []; } catch (e) { tts.voices = []; } }
+  if (canTts) {
+    refreshVoices();
+    if (speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+  }
+  function normLang(v) { return String(v.lang || '').toLowerCase().replace('_', '-'); }
+  function findVoice(l) {
+    var full = LANGS[l].tts.toLowerCase();
+    return tts.voices.find(function (v) { return normLang(v) === full; }) ||
+           tts.voices.find(function (v) { return normLang(v).split('-')[0] === l; }) || null;
+  }
+  function speak(text, l, urgent) {
+    if (!canTts || !text || !hasLang(l)) return;
+    if (urgent) tts.q.unshift({ text: text, l: l });
+    else { tts.q.push({ text: text, l: l }); while (tts.q.length > MAX_QUEUE) tts.q.shift(); }
+    pump();
+  }
+  /* 온라인 음성(폰에 해당 언어 음성이 없을 때 사용) */
+  var online = { audio: null };
+  function chunkText(t, max) {
+    var raw = t.match(/[^.!?।॥\n]+[.!?।॥]*/g) || [t];
+    var out = [], cur = '';
+    raw.forEach(function (s) {
+      s = s.trim();
+      if (!s) return;
+      while (s.length > max) {
+        var cut = s.lastIndexOf(' ', max); if (cut < 20) cut = max;
+        if (cur) { out.push(cur); cur = ''; }
+        out.push(s.slice(0, cut).trim()); s = s.slice(cut).trim();
+      }
+      if (!s) return;
+      if ((cur + ' ' + s).trim().length <= max) cur = (cur + ' ' + s).trim();
+      else { if (cur) out.push(cur); cur = s; }
+    });
+    if (cur) out.push(cur);
+    return out.length ? out : [t.slice(0, max)];
+  }
+  function stopOnline() {
+    var a = online.audio;
+    if (!a) return;
+    a.onended = null; a.onerror = null;
+    try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) {}
+  }
+  function playOnline(tok, text, l, onFail, onEnd) {
+    var parts = chunkText(text, 180), i = 0;
+    var a = online.audio;
+    if (!a) { try { a = online.audio = new Audio(); a.preload = 'auto'; } catch (e) { onFail(); return; } }
+    function next() {
+      if (tts.cur !== tok) return;
+      if (i >= parts.length) { onEnd(); return; }
+      var first = (i === 0);
+      a.onerror = function () { if (tts.cur !== tok) return; if (first) onFail(); else onEnd(); };
+      a.onended = function () { i++; next(); };
+      try {
+        a.src = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + encodeURIComponent(l) + '&q=' + encodeURIComponent(parts[i]);
+        a.playbackRate = S.rate;
+        var p = a.play();
+        if (p && p.catch) p.catch(function () { if (tts.cur !== tok) return; if (first) onFail(); else onEnd(); });
+      } catch (e) { if (first) onFail(); else onEnd(); }
+    }
+    next();
+  }
+  function findVoiceByCode(code) {
+    var c = code.toLowerCase();
+    return tts.voices.find(function (v) { return normLang(v) === c; }) ||
+           tts.voices.find(function (v) { return normLang(v).split('-')[0] === c.split('-')[0]; }) || null;
+  }
+  function speakNative(item, tok, done, fallback) {
+    if (tts.cur !== tok) return;
+    var u;
+    try { u = new SpeechSynthesisUtterance(item.text); } catch (e) { done(); return; }
+    var l = item.l;
+    var voice = findVoice(l);
+    u.lang = LANGS[l].tts;
+    if (!voice && fallback && LANGS[l].alt) {
+      voice = findVoiceByCode(LANGS[l].alt);   // 네팔어 → 힌디어 음성(데바나가리 문자 공통)
+      if (voice) u.lang = voice.lang;
+    }
+    if (voice) u.voice = voice;
+    else if (fallback && !tts.warned[l]) {
+      tts.warned[l] = 1;
+      toast('이 휴대폰에는 ' + LANGS[l].name + ' 음성이 없고 온라인 음성도 연결되지 않아요. 휴대폰 설정에서 음성 데이터를 설치해 주세요.');
+    }
+    u.rate = S.rate; u.pitch = 1; u.volume = 1;
+    u.onend = done; u.onerror = done;
+    try { speechSynthesis.speak(u); } catch (e) { done(); }
+  }
+  function pump() {
+    if (tts.busy || !tts.q.length) return;
+    var item = tts.q.shift();
+    var tok = {}, fin = false;
+    tts.busy = true; tts.cur = tok;
+    function done() {
+      if (fin || tts.cur !== tok) return;
+      fin = true; tts.busy = false; tts.cur = null;
+      clearTimeout(tts.timer);
+      pump();
+    }
+    clearTimeout(tts.timer);
+    tts.timer = setTimeout(function () {
+      try { speechSynthesis.cancel(); } catch (e) {}
+      stopOnline(); done();
+    }, Math.max(8000, item.text.length * 400 + 6000));
+    var v = canTts ? findVoice(item.l) : null;
+    if (!canTts || (!v && (tts.voices.length > 0 || item.l === 'ne'))) {
+      // 폰에 음성이 없으면 온라인 음성 → 실패 시 대체 음성(네팔어→힌디어) 순서로 시도
+      playOnline(tok, item.text, item.l,
+        function () { if (canTts) speakNative(item, tok, done, true); else done(); },
+        done);
+    } else {
+      speakNative(item, tok, done, false);
+    }
+  }
+  function stopTts() {
+    tts.q.length = 0; tts.busy = false; tts.cur = null;
+    clearTimeout(tts.timer);
+    stopOnline();
+    if (canTts) { try { speechSynthesis.cancel(); } catch (e) {} }
+  }
+  function unlockTts() {
+    if (!canTts) return;
+    try { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) {}
+  }
+
+  /* ===================== 경고음 / 진동 / 화면 유지 ===================== */
+  var actx = null;
+  function initAudio() {
+    try { var AC = window.AudioContext || window.webkitAudioContext; if (AC && !actx) actx = new AC(); if (actx && actx.state === 'suspended') actx.resume(); } catch (e) {}
+  }
+  function closeAudio() { try { if (actx) actx.close(); } catch (e) {} actx = null; }
+  function beep() {
+    try {
+      if (!actx) return;
+      if (actx.state === 'suspended') actx.resume();
+      var t0 = actx.currentTime;
+      for (var i = 0; i < 3; i++) {
+        var o = actx.createOscillator(), g = actx.createGain(), s = t0 + i * 0.35;
+        o.type = 'square'; o.frequency.value = 880;
+        g.gain.setValueAtTime(0.0001, s);
+        g.gain.exponentialRampToValueAtTime(0.25, s + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, s + 0.25);
+        o.connect(g); g.connect(actx.destination);
+        o.start(s); o.stop(s + 0.3);
+      }
+    } catch (e) {}
+  }
+  function acquireWake() {
+    try {
+      if ('wakeLock' in navigator && !S.wake && !S.stopped && document.visibilityState === 'visible') {
+        navigator.wakeLock.request('screen').then(function (w) {
+          S.wake = w;
+          w.addEventListener('release', function () { if (S.wake === w) S.wake = null; });
+          if (S.stopped) releaseWake();
+        }, function () { S.wake = null; });
+      }
+    } catch (e) { S.wake = null; }
+  }
+  function releaseWake() { try { if (S.wake) S.wake.release(); } catch (e) {} S.wake = null; }
+
+  /* ===================== 상태 표시 / 멤버 ===================== */
+  var STATUS = {
+    connecting:   ['연결 중…', 'warn'],
+    online:       ['연결됨', 'ok'],
+    reconnecting: ['재연결 중…', 'warn'],
+    error:        ['연결 오류', 'bad']
+  };
+  function setStatus(k) { S.status = k; updateStatusText(); }
+  function updateStatusText() {
+    var d = STATUS[S.status]; if (!d) return;
+    $('statDot').className = 'dot ' + d[1];
+    var st = S.status;
+    tr(d[0]).then(function (t) { if (S.status === st) $('statTxt').textContent = t; });
+  }
+  function renderMembers() {
+    $('memCnt').textContent = String(S.memList.length || 1);
+    var p = $('memPanel');
+    p.replaceChildren();
+    S.memList.forEach(function (m) {
+      var d = document.createElement('div'); d.className = 'mem';
+      d.textContent = (LANGS[m.lang] ? LANGS[m.lang].flag : '') + ' ' + m.name;
+      p.appendChild(d);
+    });
+  }
+  function hubMembersSync() {
+    S.memList = Array.from(S.members.values());
+    renderMembers();
+  }
+  function pushMembers() {
+    hubMembersSync();
+    var pkt = { t: 'members', list: S.memList.slice(0, 100) };
+    S.conns.forEach(function (c) { if (c.open) { try { c.send(pkt); } catch (e) {} } });
+  }
+
+  /* ===================== 메시지 ===================== */
+  function validMsg(m) {
+    return !!m && typeof m === 'object' && m.t === 'msg' &&
+      typeof m.id === 'string' && m.id.length > 0 && m.id.length <= 40 &&
+      typeof m.name === 'string' && m.name.length > 0 && m.name.length <= 30 &&
+      hasLang(m.lang) &&
+      typeof m.text === 'string' && m.text.trim().length > 0 && m.text.length <= MAX_TEXT;
+  }
+  function clean(m) { return { t: 'msg', id: m.id, name: m.name, lang: m.lang, text: m.text, urgent: m.urgent === true }; }
+
+  function deliver(m, own) {
+    if (S.seen.has(m.id)) return;
+    S.seen.add(m.id);
+    if (S.seen.size > 500) S.seen.delete(S.seen.values().next().value);
+    addBubble(m, own);
+    if (!own && m.urgent) {
+      try { if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 600]); } catch (e) {}
+      beep();
+    }
+  }
+
+  function addBubble(m, own) {
+    var box = $('msgs');
+    var stick = box.scrollHeight - box.scrollTop - box.clientHeight < 140;
+    var el = document.createElement('article');
+    el.className = 'msg ' + (own ? 'own' : 'other') + (m.urgent ? ' urgent' : '');
+    var head = document.createElement('div'); head.className = 'mhead';
+    var who = document.createElement('span'); who.className = 'who';
+    who.textContent = LANGS[m.lang].flag + ' ' + m.name;
+    var tm = document.createElement('time'); tm.textContent = timeStr();
+    head.append(who, tm);
+    var main = document.createElement('p'); main.className = 'main'; main.textContent = '…';
+    var sub = document.createElement('p'); sub.className = 'sub';
+    var play = document.createElement('button'); play.type = 'button'; play.className = 'play'; play.textContent = '🔊';
+    play.setAttribute('aria-label', 'play');
+    el.append(head, main, sub, play);
+    box.appendChild(el);
+    while (box.children.length > MAX_BUBBLES) box.removeChild(box.firstChild);
+    if (stick) box.scrollTop = box.scrollHeight;
+
+    var shown = m.text, shownLang = m.lang;
+    play.addEventListener('click', function () { speak(shown, shownLang); });
+
+    translate(m.text, m.lang, S.lang).then(function (t) {
+      shown = t; shownLang = S.lang;
+      main.textContent = t;
+      if (m.lang !== S.lang) sub.textContent = LANGS[m.lang].flag + ' ' + m.text;
+    }, function () {
+      shown = m.text; shownLang = m.lang;
+      main.textContent = m.text;
+      sub.textContent = '⚠ 번역 실패 · Translation failed';
+    }).then(function () {
+      if (stick) box.scrollTop = box.scrollHeight;
+      if (!own && S.autoTts && !S.stopped) speak(shown, shownLang, m.urgent);
+    });
+  }
+
+  function sendText(text, urgent, lang) {
+    text = String(text || '').trim().slice(0, MAX_TEXT);
+    if (!text) return false;
+    var m = { t: 'msg', id: uid(), name: S.name, lang: lang || S.lang, text: text, urgent: !!urgent };
+    if (S.hub) {
+      deliver(m, true);
+      S.conns.forEach(function (c) { if (c.open) { try { c.send(m); } catch (e) {} } });
+      return true;
+    }
+    if (S.upConn && S.upConn.open) {
+      try { S.upConn.send(m); } catch (e) { toast('전송에 실패했어요. 다시 시도해 주세요.'); return false; }
+      deliver(m, true);
+      return true;
+    }
+    toast('아직 연결되지 않았어요. 잠시 후 다시 시도해 주세요.');
+    return false;
+  }
+
+  /* ===================== 네트워크 (PeerJS: 허브-스타 구조) ===================== */
+  function cleanupNet() {
+    clearTimeout(S.retryTimer); S.retryTimer = null;
+    var p = S.peer, up = S.upConn;
+    S.peer = null; S.upConn = null; S.hub = false;
+    S.conns.forEach(function (c) { try { c.close(); } catch (e) {} });
+    S.conns.clear(); S.members.clear();
+    try { if (up) up.close(); } catch (e) {}
+    try { if (p) p.destroy(); } catch (e) {}
+  }
+  function scheduleReconnect() {
+    if (S.stopped || S.retryTimer) return;
+    S.retryTimer = setTimeout(connect, 800 + Math.random() * 2500);
+  }
+  function connect() {
+    if (S.stopped) return;
+    cleanupNet();
+    setStatus('connecting');
+    if (typeof window.Peer === 'undefined') {
+      setStatus('error');
+      toast('통신 모듈을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.');
+      scheduleReconnect();
+      return;
+    }
+    var p;
+    try { p = new window.Peer(PREFIX + S.room, { debug: 0 }); } catch (e) { setStatus('error'); scheduleReconnect(); return; }
+    S.peer = p;
+    p.on('open', function () {
+      if (p !== S.peer) return;
+      S.hub = true;
+      S.members.clear();
+      S.members.set('__hub', { name: S.name, lang: S.lang });
+      hubMembersSync();
+      setStatus('online');
+    });
+    p.on('connection', function (c) { if (p === S.peer) onHubConn(c); });
+    p.on('disconnected', function () { if (p !== S.peer) return; try { p.reconnect(); } catch (e) {} });
+    p.on('error', function (err) {
+      if (p !== S.peer) return;
+      var type = err && err.type;
+      if (type === 'unavailable-id') { becomeClient(); }
+      else if (FATAL[type]) { setStatus('reconnecting'); scheduleReconnect(); }
+    });
+  }
+  function becomeClient() {
+    var old = S.peer; S.peer = null;
+    try { if (old) old.destroy(); } catch (e) {}
+    var p;
+    try { p = new window.Peer({ debug: 0 }); } catch (e) { setStatus('error'); scheduleReconnect(); return; }
+    S.peer = p; S.hub = false;
+    p.on('open', function () {
+      if (p !== S.peer) return;
+      var c;
+      try { c = p.connect(PREFIX + S.room, { reliable: true, serialization: 'json' }); } catch (e) { scheduleReconnect(); return; }
+      S.upConn = c;
+      var to = setTimeout(function () { if (c === S.upConn && !c.open) { setStatus('reconnecting'); scheduleReconnect(); } }, 10000);
+      c.on('open', function () {
+        clearTimeout(to);
+        if (c !== S.upConn) return;
+        setStatus('online');
+        try { c.send({ t: 'hello', name: S.name, lang: S.lang }); } catch (e) {}
+      });
+      c.on('data', function (d) { if (c === S.upConn) onClientData(d); });
+      c.on('close', function () { clearTimeout(to); if (c !== S.upConn) return; setStatus('reconnecting'); scheduleReconnect(); });
+      c.on('error', function () { clearTimeout(to); if (c !== S.upConn) return; setStatus('reconnecting'); scheduleReconnect(); });
+    });
+    p.on('disconnected', function () { if (p !== S.peer) return; try { p.reconnect(); } catch (e) {} });
+    p.on('error', function (err) {
+      if (p !== S.peer) return;
+      if (err && FATAL[err.type]) { setStatus('reconnecting'); scheduleReconnect(); }
+    });
+  }
+  function onHubConn(c) {
+    if (S.conns.size >= MAX_CONNS) { try { c.close(); } catch (e) {} return; }
+    S.conns.set(c.peer, c);
+    var win = [];
+    c.on('data', function (d) {
+      var now = Date.now();
+      win = win.filter(function (x) { return now - x < 10000; });
+      if (win.length >= 30) return;           // 과다 전송 차단
+      win.push(now);
+      if (!d || typeof d !== 'object') return;
+      if (d.t === 'hello') {
+        if (typeof d.name === 'string' && d.name.length > 0 && d.name.length <= 30 && hasLang(d.lang)) {
+          S.members.set(c.peer, { name: d.name, lang: d.lang });
+          pushMembers();
+        }
+        return;
+      }
+      if (validMsg(d)) {
+        if (S.seen.has(d.id)) return;
+        var m = clean(d);
+        S.conns.forEach(function (o, id) { if (id !== c.peer && o.open) { try { o.send(m); } catch (e) {} } });
+        deliver(m, false);
+      }
+    });
+    function drop() {
+      if (S.conns.get(c.peer) === c) S.conns.delete(c.peer);
+      if (S.members.delete(c.peer)) pushMembers();
+    }
+    c.on('close', drop);
+    c.on('error', drop);
+  }
+  function onClientData(d) {
+    if (!d || typeof d !== 'object') return;
+    if (d.t === 'members' && Array.isArray(d.list)) {
+      S.memList = d.list.slice(0, 100).filter(function (x) {
+        return x && typeof x.name === 'string' && x.name.length <= 30 && hasLang(x.lang);
+      }).map(function (x) { return { name: x.name, lang: x.lang }; });
+      renderMembers();
+      return;
+    }
+    if (validMsg(d)) deliver(clean(d), false);
+  }
+
+  /* ===================== 음성 인식 (STT) ===================== */
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  function updateMicLabel() {
+    var on = S.listening;
+    $('mic').classList.toggle('on', on);
+    $('mic').setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('mic').querySelector('.ic').textContent = on ? '⏹' : '🎤';
+    var ko = on ? '듣는 중…' : '말하기';
+    tr(ko).then(function (t) { if (S.listening === on) $('micTxt').textContent = t; });
+  }
+  function stopRec(suppress) {
+    S.suppressAuto = !!suppress;
+    if (S.rec) { try { S.rec.abort(); } catch (e) { try { S.rec.stop(); } catch (e2) {} } }
+  }
+  function toggleRec() {
+    if (!SR) { toast('이 브라우저는 음성 인식을 지원하지 않아요. 크롬(Chrome)을 사용하거나 글자로 입력해 주세요.'); return; }
+    if (S.listening) { S.suppressAuto = false; try { S.rec.stop(); } catch (e) {} return; }
+    var rec;
+    try { rec = new SR(); } catch (e) { toast('음성 인식을 시작할 수 없어요.'); return; }
+    rec.lang = LANGS[S.lang].sr;
+    rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    var base = $('txt').value.trim();
+    var finalText = '', hadError = false;
+    S.rec = rec; S.suppressAuto = false;
+    rec.onstart = function () { S.listening = true; updateMicLabel(); };
+    rec.onresult = function (e) {
+      var interim = '';
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        var r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
+      }
+      var said = (finalText + interim).trim();
+      $('txt').value = ((base ? base + ' ' : '') + said).slice(0, MAX_TEXT);
+    };
+    rec.onerror = function (e) {
+      var er = e && e.error;
+      if (er === 'aborted') return;
+      hadError = true;
+      var map = {
+        'not-allowed': '마이크 권한이 필요해요. 브라우저 설정에서 마이크를 허용해 주세요.',
+        'service-not-allowed': '이 브라우저에서는 음성 인식을 사용할 수 없어요.',
+        'no-speech': '목소리가 들리지 않았어요. 다시 말해 주세요.',
+        'audio-capture': '마이크를 찾을 수 없어요.',
+        'network': '음성 인식 서버에 연결할 수 없어요. 인터넷을 확인해 주세요.',
+        'language-not-supported': '이 기기는 이 언어의 음성 인식을 지원하지 않아요. 글자로 입력해 주세요.'
+      };
+      toast(map[er] || '음성 인식 오류가 발생했어요.');
+    };
+    rec.onend = function () {
+      var auto = S.autoSend && !S.suppressAuto && !hadError;
+      if (S.rec === rec) S.rec = null;
+      S.listening = false; S.suppressAuto = false;
+      rec.onstart = rec.onresult = rec.onerror = rec.onend = null;
+      updateMicLabel();
+      if (auto && $('txt').value.trim()) doSend();
+    };
+    try { rec.start(); } catch (e) { S.rec = null; toast('음성 인식을 시작할 수 없어요. 잠시 후 다시 시도해 주세요.'); }
+  }
+
+  function doSend() {
+    if (S.listening) stopRec(true);
+    var v = $('txt').value;
+    if (sendText(v, false, null)) { $('txt').value = ''; }
+  }
+
+  /* ===================== 빠른 문구 ===================== */
+  function renderChips() {
+    var box = $('chips');
+    box.replaceChildren();
+    PHRASES.forEach(function (ph) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip' + (ph.urgent ? ' urg' : '');
+      var prefix = ph.urgent ? '🚨 ' : '';
+      b.textContent = prefix + ph.text;
+      if (S.lang !== 'ko') translate(ph.text, 'ko', S.lang, true).then(function (t) { b.textContent = prefix + t; }, function () {});
+      b.addEventListener('click', function () { sendText(ph.text, !!ph.urgent, 'ko'); });
+      box.appendChild(b);
+    });
+  }
+
+  /* ===================== 화면 전환 ===================== */
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(function (s) { s.classList.toggle('active', s.id === id); });
+  }
+  function selectLang(l) {
+    if (!hasLang(l)) l = 'ko';
+    S.lang = l;
+    document.querySelectorAll('#langBtns button').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-lang') === l ? 'true' : 'false');
+    });
+    applyUi(l);
+  }
+  function enter(name, room) {
+    S.name = name; S.room = room; S.stopped = false;
+    store.set('pt_name', name); store.set('pt_lang', S.lang); store.set('pt_room', room);
+    $('roomLbl').textContent = '🐖 ' + room;
+    $('msgs').replaceChildren();
+    S.seen.clear(); S.memList = [{ name: name, lang: S.lang }]; renderMembers();
+    renderChips();
+    show('chat');
+    initAudio(); unlockTts(); acquireWake();
+    connect();
+  }
+  function leave() {
+    S.stopped = true;
+    stopRec(true); stopTts(); releaseWake(); closeAudio();
+    cleanupNet();
+    S.seen.clear(); S.memList = [];
+    $('msgs').replaceChildren(); $('txt').value = '';
+    $('memPanel').hidden = true; $('setPanel').hidden = true;
+    show('join');
+  }
+
+  /* ===================== 이벤트 바인딩 ===================== */
+  function init() {
+    var sName = store.get('pt_name'), sLang = store.get('pt_lang'), sRoom = store.get('pt_room');
+    if (sName) $('nameIn').value = String(sName).slice(0, 20);
+    if (sRoom) $('roomIn').value = String(sRoom).slice(0, 20);
+    S.autoTts = store.get('pt_autotts') !== '0';
+    S.autoSend = store.get('pt_autosend') === '1';
+    var r = parseFloat(store.get('pt_rate')); if (r >= 0.6 && r <= 1.3) S.rate = r;
+    var big = store.get('pt_big') === '1';
+    $('autoTts').checked = S.autoTts; $('autoSend').checked = S.autoSend; $('rate').value = String(S.rate); $('bigFont').checked = big;
+    document.documentElement.style.setProperty('--fs', big ? '1.3' : '1');
+    $('ttsBtn').setAttribute('aria-pressed', S.autoTts ? 'true' : 'false');
+    $('ttsBtn').textContent = S.autoTts ? '🔊' : '🔇';
+    selectLang(hasLang(sLang) ? sLang : 'ko');
+
+    document.querySelectorAll('#langBtns button').forEach(function (b) {
+      b.addEventListener('click', function () { selectLang(b.getAttribute('data-lang')); });
+    });
+    $('joinForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var name = $('nameIn').value.trim().replace(/\s+/g, ' ').slice(0, 20);
+      var room = $('roomIn').value.trim().toLowerCase();
+      var err = $('joinErr');
+      if (!name) { tr('이름을 입력해 주세요.').then(function (t) { err.textContent = t; }); return; }
+      if (!/^[a-z0-9]{4,20}$/.test(room)) { tr('농장 코드는 영문·숫자 4~20자로 입력해 주세요.').then(function (t) { err.textContent = t; }); return; }
+      err.textContent = '';
+      enter(name, room);
+    });
+
+    $('mic').addEventListener('click', toggleRec);
+    $('send').addEventListener('click', doSend);
+    $('txt').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); doSend(); }
+    });
+
+    function togglePanel(id, other) {
+      var p = $(id); $(other).hidden = true; p.hidden = !p.hidden;
+    }
+    $('memBtn').addEventListener('click', function (e) { e.stopPropagation(); togglePanel('memPanel', 'setPanel'); });
+    $('setBtn').addEventListener('click', function (e) { e.stopPropagation(); togglePanel('setPanel', 'memPanel'); });
+    document.addEventListener('click', function (e) {
+      ['memPanel', 'setPanel'].forEach(function (id) {
+        var p = $(id);
+        if (!p.hidden && !p.contains(e.target)) p.hidden = true;
+      });
+    });
+    $('ttsBtn').addEventListener('click', function () {
+      S.autoTts = !S.autoTts; $('autoTts').checked = S.autoTts;
+      $('ttsBtn').setAttribute('aria-pressed', S.autoTts ? 'true' : 'false');
+      $('ttsBtn').textContent = S.autoTts ? '🔊' : '🔇';
+      store.set('pt_autotts', S.autoTts ? '1' : '0');
+      if (!S.autoTts) stopTts();
+    });
+    $('autoTts').addEventListener('change', function () {
+      S.autoTts = this.checked; store.set('pt_autotts', S.autoTts ? '1' : '0');
+      $('ttsBtn').setAttribute('aria-pressed', S.autoTts ? 'true' : 'false');
+      $('ttsBtn').textContent = S.autoTts ? '🔊' : '🔇';
+      if (!S.autoTts) stopTts();
+    });
+    $('autoSend').addEventListener('change', function () { S.autoSend = this.checked; store.set('pt_autosend', S.autoSend ? '1' : '0'); });
+    $('rate').addEventListener('change', function () { var v = parseFloat(this.value); if (v >= 0.6 && v <= 1.3) { S.rate = v; store.set('pt_rate', String(v)); } });
+    $('bigFont').addEventListener('change', function () {
+      document.documentElement.style.setProperty('--fs', this.checked ? '1.3' : '1');
+      store.set('pt_big', this.checked ? '1' : '0');
+    });
+    $('leaveBtn').addEventListener('click', leave);
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && !S.stopped) {
+        acquireWake();
+        if (S.status !== 'online') scheduleReconnect();
+      }
+    });
+    window.addEventListener('offline', function () { if (!S.stopped) setStatus('reconnecting'); });
+    window.addEventListener('online', function () { if (!S.stopped) scheduleReconnect(); });
+    window.addEventListener('pagehide', function () { if (!S.stopped) { stopRec(true); stopTts(); cleanupNet(); } });
+    window.addEventListener('pageshow', function (e) { if (e.persisted && !S.stopped) scheduleReconnect(); });
+
+    if (!SR) $('mic').title = 'Speech recognition not supported';
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
